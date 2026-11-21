@@ -39,6 +39,14 @@ unless the user is Dhia.
 - Every screen needs a loading state, an error message, and an empty state.
 - Mobile-friendly layout. Simple, calm design: this is a mental-health app.
 - Mocks are on by default (`VITE_USE_MOCKS=true`), so screens work without the backend.
+  Log in with the **Demo patient** / **Demo specialist** buttons.
+- Reuse what already exists instead of writing your own:
+  - UI pieces in `frontend/src/components/ui/` (Button, Card, Input, Textarea, Badge, Label). Badge has `green` / `orange` / `red` variants for risk.
+  - `useAsync` from `@/hooks/useAsync` for loading data: `const { data, error, loading, reload } = useAsync(() => getHomework(), [])`
+  - `Spinner`, `ErrorView`, `EmptyView` from `@/components/StateViews` for the loading / error / empty states.
+  - `useAuth()` from `@/auth/AuthContext` for the logged-in user (`me`) and `refresh()`.
+- Every page file starts as a placeholder that lists what to build and which functions to call. Replace the whole file.
+- Routes already exist in `App.tsx` for every planned screen. A new route needs Dhia.
 - Run `npm run dev` inside `frontend/` and check the screen in the browser before saying it's done.
 
 ## Rules for content work (B)

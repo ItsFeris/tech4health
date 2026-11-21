@@ -1,0 +1,40 @@
+# Crisis keyword list — owned by B.
+# One word or phrase per line, under [red] or [orange]. Lines starting with # are ignored.
+# Matching ignores upper/lower case. Add darija in Latin AND Arabic letters, plus Arabic, French, English.
+# A match here is instant and works even if the AI is down, so be generous with [red].
+
+[red]
+suicide
+kill myself
+end my life
+want to die
+hurt myself
+nheb nmout
+n7eb nmout
+nheb nmout rou7i
+n9atel rou7i
+nqatel rou7i
+ma3adch nheb n3ich
+ma3adech nheb n3ich
+نحب نموت
+نقتل روحي
+انتحار
+أريد أن أموت
+me suicider
+me tuer
+envie de mourir
+en finir
+
+[orange]
+hopeless
+worthless
+can't go on
+empty inside
+ma3adch nnajjem
+ta3bet barcha
+mafamma 7atta fayda
+فارغ
+ما عادش نجم
+je n'en peux plus
+plus envie de rien
+je me sens vide

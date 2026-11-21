@@ -32,7 +32,7 @@ Three people: Dhia owns everything that can break silently (database, security, 
 | A — Patient app | TBD | `frontend/src/pages/patient/` | Login, onboarding, chat screen, daily check-in, homework list, PHQ-9 form, SOS button, crisis screen, patient-side demo flow |
 | B — Specialist side + content | TBD | `frontend/src/pages/specialist/`, `docs/` | Patient list, alerts inbox, weekly summary page, assign homework, mood chart; AI system prompt (darija/French), summary prompt, crisis keyword list, crisis screen text, fake demo patients, demo script, slides |
 
-Before A and B start, Dhia sets up in about 1 to 2 hours: the React + Vite + Tailwind + shadcn/ui skeleton with routing, a login page and an empty layout for each side; `contract.ts` and one mock JSON file per type; and `src/api/` functions such as `getPatients()` and `sendChat()` that return mocks for now. Later Dhia switches those functions to the real backend without touching any page.
+Before A and B start, Dhia sets up in about 1 to 2 hours: the React + Vite + Tailwind + shadcn/ui skeleton with routing, a login page and an empty layout for each side; `contract.ts` and one typed mock file per type; and `src/api/` functions such as `getPatients()` and `sendChat()` that return mocks for now. Later Dhia switches those functions to the real backend without touching any page.
 
 Rules for A and B:
 
@@ -68,7 +68,7 @@ tech4health/
 │   ├── src/
 │   │   ├── types/contract.ts     # Dhia only: TS types = section 5
 │   │   ├── api/                  # Dhia only: every fetch call, mocks first, real API later
-│   │   ├── mocks/                # Dhia only: fake JSON that matches contract.ts
+│   │   ├── mocks/                # Dhia only: typed fake data that matches contract.ts
 │   │   ├── lib/supabase.ts       # Dhia: login + realtime client
 │   │   ├── pages/patient/        # A
 │   │   ├── pages/specialist/     # B
@@ -439,7 +439,7 @@ Never commit `.env`, API keys, `node_modules/` or `__pycache__/`. If two people 
 
 Nobody waits on anybody: everyone builds against fakes that follow this contract, then the team plugs the real parts together at six fixed checkpoints.
 
-- Frontend (A and B): Dhia puts one JSON file per type in `src/mocks/`, and the functions in `src/api/` return them while `VITE_USE_MOCKS=true`. A and B only call those functions, so their pages never know the difference.
+- Frontend (A and B): Dhia puts one typed mock file per type in `src/mocks/`, and the functions in `src/api/` return them while `VITE_USE_MOCKS=true`. A and B only call those functions, so their pages never know the difference.
 - Backend (Dhia): each function in section 6 starts as a stub with the real signature that returns fake data. Examples: `assess_message` always returns green, `reply` returns `"stub reply"`, `create_alert` prints and returns a fake `Alert`.
 - Seed data (B writes, Dhia loads): one specialist, three patients and one week of check-ins, messages and homework. Patient A is stable, patient B has a falling mood and an open orange alert, and patient C is fresh for the live crisis demo.
 - Swap rule: replace a stub or a mock with real code in its own PR, and the callers don't change.

@@ -1,0 +1,38 @@
+{
+  "en": {
+    "title": "You're not alone",
+    "body": "Your specialist has been alerted right now. If you are in danger, call emergency services or go to the nearest emergency room. Let's breathe together for a moment.",
+    "actions": [
+      { "label": "Call emergency services", "kind": "call" },
+      { "label": "Alert my specialist again", "kind": "sos" },
+      { "label": "Breathe with me", "kind": "breathing" }
+    ]
+  },
+  "fr": {
+    "title": "Vous n'êtes pas seul·e",
+    "body": "Votre spécialiste vient d'être prévenu·e. Si vous êtes en danger, appelez les secours ou rendez-vous aux urgences les plus proches. Respirons ensemble un instant.",
+    "actions": [
+      { "label": "Appeler les secours", "kind": "call" },
+      { "label": "Prévenir à nouveau mon spécialiste", "kind": "sos" },
+      { "label": "Respirer avec moi", "kind": "breathing" }
+    ]
+  },
+  "ar": {
+    "title": "أنت لست وحدك",
+    "body": "تم إعلام المختص الخاص بك الآن. إذا كنت في خطر، اتصل بخدمات الطوارئ أو توجّه إلى أقرب قسم استعجالي. لنتنفّس معًا لحظة.",
+    "actions": [
+      { "label": "اتصل بالطوارئ", "kind": "call" },
+      { "label": "نبّه المختص مرة أخرى", "kind": "sos" },
+      { "label": "تنفّس معي", "kind": "breathing" }
+    ]
+  },
+  "darija": {
+    "title": "Enti mouch wa7dek",
+    "body": "El spécialiste mte3ek t3lem tawa. Ken enti fi khatar, a3ml 3la el urgences walla emchi lel urgences el a9rab. Ta3ala netneffsou m3a b3adhna chwaya.",
+    "actions": [
+      { "label": "Kallem el urgences", "kind": "call" },
+      { "label": "3ayet lel spécialiste marra okhra", "kind": "sos" },
+      { "label": "Etneffes m3aya", "kind": "breathing" }
+    ]
+  }
+}
