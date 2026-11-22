@@ -1,12 +1,13 @@
 // Settings (design: 9 · Settings).
 import { useEffect, useState } from 'react'
 import { LogOut, Phone, Settings } from 'lucide-react'
-import { getAppointments, updateConsent } from '@/api'
+import { getAppointments, getSpecialist, updateConsent } from '@/api'
 import { useAuth } from '@/auth/AuthContext'
-import type { Appointment, Consent, Lang } from '@/types/contract'
+import type { Appointment, Consent, Lang, SpecialistCard } from '@/types/contract'
 import { Card, Headline, Hero, Notice, Pill, SectionLabel, Skeleton, TopBar } from '@/components/t4h/kit'
 import { dayLabel, timeLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { SpecialistPhoto, VerifiedBadge, lookOf } from '@/components/t4h/specialist'
 
 const LANGS: { id: Lang; label: string }[] = [
   { id: 'darija', label: 'Tounsi' },
@@ -22,6 +23,11 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [appointments, setAppointments] = useState<Appointment[] | null>(null)
   const [apptError, setApptError] = useState(false)
+  const [specialist, setSpecialist] = useState<SpecialistCard | null>(null)
+
+  useEffect(() => {
+    if (me?.specialist_id) getSpecialist(me.specialist_id).then(setSpecialist).catch(() => setSpecialist(null))
+  }, [me?.specialist_id])
 
   useEffect(() => {
     getAppointments()
@@ -104,15 +110,31 @@ export default function SettingsPage() {
         </Card>
 
         <Card>
-          <SectionLabel>Upcoming sessions</SectionLabel>
+          <SectionLabel>My specialist</SectionLabel>
+          {specialist && (
+            <div className="mt-3 flex items-center gap-3.5">
+              <SpecialistPhoto id={specialist.id} photoUrl={specialist.photo_url} name={specialist.nickname} size={56} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[17px] leading-tight">{specialist.nickname}</p>
+                <p className="text-[13.5px]" style={{ color: lookOf(specialist.id).col }}>
+                  {specialist.specialty ?? 'Specialist'}
+                </p>
+                <p className="mt-1 flex items-center gap-2 text-[12.5px] text-sub">
+                  {specialist.price != null ? `${specialist.price} DT per session` : 'Your specialist'}
+                  {specialist.verified && <VerifiedBadge className="h-6 px-2 text-[11px]" />}
+                </p>
+              </div>
+            </div>
+          )}
+          <p className="mt-4 text-[12.5px] text-sub">Upcoming sessions</p>
           {appointments === null && !apptError ? (
-            <Skeleton className="mt-3 h-28 rounded-[22px]" />
+            <Skeleton className="mt-2 h-28 rounded-[22px]" />
           ) : apptError ? (
             <p className="mt-3 text-[14px] text-sos">Could not load your sessions.</p>
           ) : upcoming.length === 0 ? (
             <p className="mt-3 text-[14px] text-sub">No session booked yet.</p>
           ) : (
-            <div className="mt-3 grid grid-cols-2 gap-2.5">
+            <div className="mt-2 grid grid-cols-2 gap-2.5">
               {upcoming.map((a, i) => (
                 <div key={a.id} className="rounded-[22px] p-3.5" style={{ background: i === 0 ? 'linear-gradient(140deg, #CBECF5 0%, #D9F0EA 100%)' : 'linear-gradient(140deg, #DDD8FF 0%, #ECE4F8 100%)' }}>
                   <p className="text-[16px] leading-tight">{dayLabel(a.starts_at)}</p>

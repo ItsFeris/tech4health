@@ -1,129 +1,166 @@
-// Specialist onboarding (design: 10 · Specialist onboarding).
-import { useState, type FormEvent } from 'react'
+// Specialist onboarding (design M01 profile, M02 photo & price). Then /specialist/verify (M03–M09). Dhia owns this file.
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Loader2, LogOut } from 'lucide-react'
+import { ArrowLeft, Camera, Minus, Plus } from 'lucide-react'
 import { onboardSpecialist } from '@/api'
 import { useAuth } from '@/auth/AuthContext'
 import type { Lang } from '@/types/contract'
-import { FlatField, Hero, LogoGlyph, Notice } from '@/components/t4h/kit'
-import { initials } from '@/lib/format'
+import { Cta, Field, FieldLabel, GlassCircle, Headline, Hero, Notice, Pill, TextArea } from '@/components/t4h/kit'
+import { Portrait, lookOf } from '@/components/t4h/specialist'
 import { cn } from '@/lib/utils'
 
 const LANGS: { id: Lang; label: string }[] = [
   { id: 'darija', label: 'Tounsi' },
-  { id: 'ar', label: 'العربية' },
   { id: 'fr', label: 'Français' },
+  { id: 'ar', label: 'العربية' },
   { id: 'en', label: 'English' },
 ]
-const SPECIALTIES = ['Clinical psychologist', 'Psychiatrist', 'Psychotherapist', 'Counsellor']
+const SPECIALTIES = ['Clinical psychologist', 'Psychiatrist', 'Psychotherapist', 'Counselor']
+
+/** Square, small JPEG so it fits in the database as a data: URL. */
+async function photoToDataUrl(file: File, size = 320): Promise<string> {
+  const img = await createImageBitmap(file)
+  const side = Math.min(img.width, img.height)
+  const c = document.createElement('canvas')
+  c.width = c.height = size
+  c.getContext('2d')!.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size)
+  return c.toDataURL('image/jpeg', 0.82)
+}
 
 export default function OnboardingPage() {
   const navigate = useNavigate()
-  const { refresh, logout } = useAuth()
+  const { me, refresh, logout } = useAuth()
+  const [step, setStep] = useState(0)
   const [name, setName] = useState('')
-  const [language, setLanguage] = useState<Lang>('fr')
   const [specialty, setSpecialty] = useState(SPECIALTIES[0])
+  const [languages, setLanguages] = useState<Lang[]>(['darija', 'fr'])
+  const [photo, setPhoto] = useState<string | null>(null)
+  const [price, setPrice] = useState(60)
+  const [years, setYears] = useState(5)
   const [bio, setBio] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
-  async function submit(e: FormEvent) {
-    e.preventDefault()
-    if (!name.trim()) return
+  const canContinue = step === 0 ? name.trim().length > 1 && languages.length > 0 : true
+
+  function toggleLang(l: Lang) {
+    setLanguages((cur) => (cur.includes(l) ? cur.filter((x) => x !== l) : [...cur, l]))
+  }
+
+  async function onPhoto(file?: File) {
+    if (!file) return
+    try {
+      setPhoto(await photoToDataUrl(file))
+    } catch {
+      setError('Could not read this photo. Try another one.')
+    }
+  }
+
+  async function submit() {
     setBusy(true)
     setError(null)
     try {
-      await onboardSpecialist({ nickname: name.trim(), language, specialty, bio: bio.trim() || null })
+      await onboardSpecialist({ nickname: name.trim(), language: languages[0], languages, specialty, bio: bio.trim() || null, price, years, photo_url: photo })
       await refresh()
-      navigate('/specialist', { replace: true })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save your profile.')
+      navigate('/specialist/verify', { replace: true })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save your profile.')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="relative min-h-svh">
-      <Hero tone="lavender" variant="wide" height={520} />
-      <div className="relative z-10 mx-auto max-w-[1216px] px-6 pb-16 pt-6">
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-3">
-            <span className="flex size-[46px] items-center justify-center rounded-full bg-white/70 shadow-[var(--shadow-soft)]">
-              <LogoGlyph className="size-5" />
-            </span>
-            <span className="text-[19px] tracking-[-0.3px]">Tech4Health</span>
-          </span>
-          <button type="button" onClick={() => void logout()} className="flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm shadow-[var(--shadow-soft)]">
-            <LogOut className="size-4" /> Log out
-          </button>
-        </div>
-        <div className="pt-6 text-center">
-          <p className="text-[16px] text-ink-2">Welcome, specialist · about 2 minutes</p>
-          <h1 className="headline mt-1 text-[56px]">Set up your profile</h1>
-        </div>
+    <div className="min-h-svh bg-[#EDEBF2]">
+      <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden bg-background">
+        <Hero tone={step === 0 ? 'lavender' : 'teal'} variant="petals" />
+        <div className="relative z-10 flex flex-1 flex-col px-5 pb-7 pt-6">
+          <div className="flex items-center justify-between">
+            <GlassCircle aria-label={step === 0 ? 'Log out' : 'Back'} onClick={() => (step === 0 ? void logout() : setStep(0))}>
+              <ArrowLeft className="size-5" />
+            </GlassCircle>
+            <Pill>Step {step + 1} of 4 · {step === 0 ? 'Profile' : 'Photo & price'}</Pill>
+            <span className="w-[52px]" />
+          </div>
+          <div className="mt-5 grid grid-cols-4 gap-1.5" aria-hidden="true">
+            {[0, 1, 2, 3].map((i) => (
+              <span key={i} className={cn('h-1 rounded-full', i <= step ? 'bg-ink' : 'bg-white/80')} />
+            ))}
+          </div>
 
-        <div className="mt-10 grid items-start gap-6 lg:grid-cols-[1fr_340px]">
-          <form onSubmit={submit} className="rounded-[28px] bg-white p-7 shadow-[var(--shadow-card)]">
-            <label htmlFor="sname" className="text-[13px] text-sub">
-              Display name (patients see this)
-            </label>
-            <FlatField id="sname" className="mt-1.5 h-12" required maxLength={60} placeholder="e.g. Dr. Amira Ben Salah" value={name} onChange={(e) => setName(e.target.value)} />
+          {step === 0 ? (
+            <section className="mt-12 flex flex-col gap-3">
+              <Headline eyebrow="Welcome to Tech4Health" title="Tell patients about you" />
+              <div className="mt-5">
+                <FieldLabel htmlFor="sname">Full name, as on your ID</FieldLabel>
+                <Field id="sname" autoFocus maxLength={60} placeholder="e.g. Dr. Salma Trabelsi" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <p className="mt-2 text-[13px] text-sub">Specialty</p>
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Specialty">
+                {SPECIALTIES.map((s) => (
+                  <Chip key={s} on={specialty === s} onClick={() => setSpecialty(s)} role="radio">
+                    {s}
+                  </Chip>
+                ))}
+              </div>
+              <p className="mt-2 text-[13px] text-sub">Languages you work in</p>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Languages">
+                {LANGS.map((l) => (
+                  <Chip key={l.id} on={languages.includes(l.id)} onClick={() => toggleLang(l.id)}>
+                    <span lang={l.id === 'ar' ? 'ar' : undefined}>{l.label}</span>
+                  </Chip>
+                ))}
+              </div>
+            </section>
+          ) : (
+            <section className="mt-10 flex flex-col gap-3">
+              <Headline eyebrow="What patients see first" title="Your photo & price" />
+              <div className="mt-3 flex flex-col items-center gap-2">
+                <button type="button" onClick={() => fileRef.current?.click()} aria-label="Add a photo" className="relative">
+                  <span className="flex size-[124px] items-end justify-center overflow-hidden rounded-full border-[5px] border-white shadow-[var(--shadow-card)]" style={{ background: lookOf(me?.id ?? name).bg }}>
+                    {photo ? <img src={photo} alt="Your photo" className="size-full object-cover" /> : <Portrait id={me?.id ?? name} size={124} />}
+                  </span>
+                  <span className="absolute bottom-1 right-1 flex size-10 items-center justify-center rounded-full border-[3px] border-white bg-ink text-white">
+                    <Camera className="size-4" />
+                  </span>
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" capture="user" className="hidden" onChange={(e) => void onPhoto(e.target.files?.[0])} />
+                <p className="text-[13px] text-ink-2">A clear, friendly photo of your face.</p>
+              </div>
 
-            <p className="mt-5 text-[13px] text-sub">Main language you work in</p>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {LANGS.map((l) => (
-                <Chip key={l.id} on={language === l.id} onClick={() => setLanguage(l.id)}>
-                  <span lang={l.id === 'ar' ? 'ar' : undefined}>{l.label}</span>
-                </Chip>
-              ))}
-            </div>
+              <div className="rounded-[26px] bg-white p-5 shadow-[var(--shadow-soft)]">
+                <p className="text-[12px] tracking-[0.08em] text-sub uppercase">Price per 50-min session</p>
+                <div className="mt-2 flex items-center justify-between">
+                  <Stepper label="Lower price" onClick={() => setPrice(Math.max(0, price - 5))} icon={<Minus className="size-5" />} />
+                  <p aria-live="polite">
+                    <span className="text-[52px] font-light leading-none tracking-[-2px]">{price}</span> <span className="text-[15px]">DT</span>
+                  </p>
+                  <Stepper dark label="Higher price" onClick={() => setPrice(Math.min(1000, price + 5))} icon={<Plus className="size-5" />} />
+                </div>
+                <p className="mt-2 text-center text-[13px] text-sub">Shown to patients when they choose a specialist.</p>
+                <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
+                  <span className="text-[14px]">Years of practice</span>
+                  <span className="flex items-center gap-3">
+                    <Stepper small label="Fewer years" onClick={() => setYears(Math.max(0, years - 1))} icon={<Minus className="size-4" />} />
+                    <span className="w-6 text-center text-[18px]">{years}</span>
+                    <Stepper small label="More years" onClick={() => setYears(Math.min(60, years + 1))} icon={<Plus className="size-4" />} />
+                  </span>
+                </div>
+              </div>
 
-            <p className="mt-5 text-[13px] text-sub">Specialty</p>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {SPECIALTIES.map((s) => (
-                <Chip key={s} on={specialty === s} onClick={() => setSpecialty(s)}>
-                  {s}
-                </Chip>
-              ))}
-            </div>
+              <div>
+                <FieldLabel htmlFor="sbio">Short bio</FieldLabel>
+                <TextArea id="sbio" rows={3} maxLength={200} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="I help young adults with anxiety, stress and sleep. We go at your pace." />
+              </div>
+            </section>
+          )}
 
-            <label htmlFor="sbio" className="mt-5 block text-[13px] text-sub">
-              Short bio
-            </label>
-            <textarea
-              id="sbio"
-              rows={3}
-              maxLength={200}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="I help young adults with anxiety, stress and sleep. I listen first, and we go at your pace."
-              className="mt-1.5 w-full resize-none rounded-xl bg-soft px-3.5 py-3 text-sm outline-none focus:ring-2 focus:ring-ink"
-            />
-            <p className="text-right text-[12px] text-faint">{bio.length} / 200</p>
-
-            {error && (
-              <Notice tone="error" className="mt-3">
-                {error}
-              </Notice>
-            )}
-            <div className="mt-4 flex justify-end">
-              <button type="submit" disabled={busy || !name.trim()} className="flex h-12 items-center gap-4 rounded-full bg-ink pl-5 pr-1.5 text-[15px] text-white disabled:opacity-50">
-                Continue to my patients
-                <span className="flex size-9 items-center justify-center rounded-full bg-white text-ink">{busy ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}</span>
-              </button>
-            </div>
-          </form>
-
-          <div>
-            <p className="mb-2 text-[13px] text-sub">How patients see you</p>
-            <div className="relative overflow-hidden rounded-[28px] p-6 shadow-[var(--shadow-card)]" style={{ background: 'linear-gradient(140deg, #DDD8FF 0%, #F3DCEB 100%)' }}>
-              <span className="flex size-14 items-center justify-center rounded-full bg-white text-[17px]">{initials(name || 'S T')}</span>
-              <p className="mt-4 text-[24px] leading-tight tracking-[-0.5px]">{name || 'Your name'}</p>
-              <p className="text-[24px] leading-tight tracking-[-0.5px] text-lav-ink">{specialty}</p>
-              <p className="mt-3 text-[14px] text-ink-2">{bio || 'Your short bio appears here.'}</p>
-              <span className="mt-4 inline-flex h-8 items-center rounded-full bg-white/80 px-3 text-[12.5px]">{LANGS.find((l) => l.id === language)?.label}</span>
-            </div>
+          <div className="mt-auto flex flex-col gap-3 pt-8">
+            {error && <Notice tone="error">{error}</Notice>}
+            <Cta onClick={() => (step === 0 ? setStep(1) : void submit())} disabled={!canContinue} loading={busy}>
+              Continue
+            </Cta>
           </div>
         </div>
       </div>
@@ -131,10 +168,25 @@ export default function OnboardingPage() {
   )
 }
 
-function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+function Chip({ on, onClick, children, role }: { on: boolean; onClick: () => void; children: React.ReactNode; role?: string }) {
   return (
-    <button type="button" aria-pressed={on} onClick={onClick} className={cn('h-10 rounded-full px-4 text-[14px] transition', on ? 'bg-ink text-white' : 'bg-soft text-ink hover:bg-soft-2')}>
+    <button
+      type="button"
+      role={role}
+      aria-checked={role ? on : undefined}
+      aria-pressed={role ? undefined : on}
+      onClick={onClick}
+      className={cn('h-11 rounded-full px-4 text-[14.5px] transition', on ? 'bg-ink text-white' : 'bg-white text-ink shadow-[0_6px_16px_rgba(40,30,70,.07)]')}
+    >
       {children}
+    </button>
+  )
+}
+
+function Stepper({ label, onClick, icon, dark, small }: { label: string; onClick: () => void; icon: React.ReactNode; dark?: boolean; small?: boolean }) {
+  return (
+    <button type="button" aria-label={label} onClick={onClick} className={cn('flex items-center justify-center rounded-full', small ? 'size-9' : 'size-[52px]', dark ? 'bg-ink text-white' : 'bg-soft text-ink')}>
+      {icon}
     </button>
   )
 }

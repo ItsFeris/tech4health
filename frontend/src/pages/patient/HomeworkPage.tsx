@@ -2,11 +2,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, Heart, Sprout } from 'lucide-react'
-import { getHomework, updateHomework } from '@/api'
+import { getHomework, getLatestTakeaways, getSpecialist, updateHomework } from '@/api'
 import type { Homework } from '@/types/contract'
 import { Cta, Headline, Hero, Notice, Pill, Skeleton, TopBar } from '@/components/t4h/kit'
 import { dayLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/auth/AuthContext'
+import { SpecialistPhoto } from '@/components/t4h/specialist'
+import type { SpecialistCard, Takeaways } from '@/types/contract'
 
 const CARD_TONES = [
   { g: 'linear-gradient(140deg, #F0CEB1 0%, #F6E2D2 100%)', c: '#B06F45' },
@@ -23,6 +26,15 @@ export default function HomeworkPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
+
+  const { me } = useAuth()
+  const [note, setNote] = useState<Takeaways | null>(null)
+  const [specialist, setSpecialist] = useState<SpecialistCard | null>(null)
+
+  useEffect(() => {
+    getLatestTakeaways().then(setNote).catch(() => setNote(null))
+    if (me?.specialist_id) getSpecialist(me.specialist_id).then(setSpecialist).catch(() => setSpecialist(null))
+  }, [me?.specialist_id])
 
   useEffect(() => {
     getHomework()
@@ -135,6 +147,22 @@ export default function HomeworkPage() {
               {visible.length === 0 && <p className="py-6 text-center text-[14px] text-sub">{filter === 'done' ? 'Nothing ticked yet. One small step is enough.' : 'All done. Well done!'}</p>}
             </ul>
           </>
+        )}
+
+        {/* The specialist's words after the last session (session note takeaways). */}
+        {note && (
+          <figure className="rounded-[26px] bg-white p-5 shadow-[var(--shadow-soft)]">
+            <figcaption className="flex items-center gap-3">
+              {specialist && <SpecialistPhoto id={specialist.id} photoUrl={specialist.photo_url} name={specialist.nickname} size={44} />}
+              <span>
+                <span className="block text-[15px]">{specialist?.nickname ?? 'Your specialist'}</span>
+                <span className="block text-[12.5px] text-sub">After {new Date(note.session_date).toLocaleDateString('en-GB', { weekday: 'long' })}&apos;s session</span>
+              </span>
+            </figcaption>
+            <blockquote dir="auto" className="mt-3 text-[16px] leading-snug text-ink">
+              “{note.takeaways}”
+            </blockquote>
+          </figure>
         )}
       </div>
     </div>

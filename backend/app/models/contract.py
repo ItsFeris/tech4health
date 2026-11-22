@@ -182,6 +182,7 @@ class PatientOnboardingBody(BaseModel):
     consent: Consent
     emergency_name: Optional[str] = None
     emergency_email: Optional[str] = None
+    specialist_id: Optional[str] = None  # v1.4: chosen in onboarding; null = first verified specialist
 
 
 class SpecialistOnboardingBody(BaseModel):
@@ -189,6 +190,38 @@ class SpecialistOnboardingBody(BaseModel):
     language: Lang
     specialty: Optional[str] = None
     bio: Optional[str] = None
+    languages: list[Lang] = []  # v1.4
+    years: Optional[int] = Field(default=None, ge=0, le=60)  # v1.4: years of practice
+    price: Optional[int] = Field(default=None, ge=0, le=1000)  # v1.4: DT per 50-min session
+    photo_url: Optional[str] = Field(default=None, max_length=300_000)  # v1.4: small data: URL or https URL
+
+
+class SpecialistCard(BaseModel):
+    """v1.4: what patients see when they choose a specialist. Public info only."""
+    id: str
+    nickname: str
+    specialty: Optional[str] = None
+    bio: Optional[str] = None
+    languages: list[Lang] = []
+    years: Optional[int] = None
+    price: Optional[int] = None
+    photo_url: Optional[str] = None
+    verified: bool = False
+    accepting: bool = True
+
+
+class VerifyBody(BaseModel):
+    """v1.4: result of the in-app checks (ID card, license, selfie). All three must pass."""
+    id_card: bool
+    license: bool
+    selfie: bool
+
+
+class Takeaways(BaseModel):
+    """v1.4: the specialist's note for the patient after the last session."""
+    appointment_id: str
+    session_date: str
+    takeaways: str
 
 
 class ConsentBody(BaseModel):

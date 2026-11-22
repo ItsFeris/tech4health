@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import db
 from app.ai import llm
-from app.api import alerts, appointments, chat, checkins, dev, homework, me, patients, questionnaires, sos, summaries, voice
+from app.api import alerts, appointments, chat, checkins, dev, homework, me, patients, questionnaires, sos, specialists, summaries, voice
 from app.config import settings
 from app.errors import install_error_handlers
 
@@ -29,7 +29,7 @@ app.add_middleware(
 )
 install_error_handlers(app)
 
-for module in (me, appointments, homework, checkins, patients, alerts, chat, questionnaires, summaries, sos, voice):
+for module in (me, specialists, appointments, homework, checkins, patients, alerts, chat, questionnaires, summaries, sos, voice):
     app.include_router(module.router, prefix="/api/v1")
 
 if settings.dev_tools:

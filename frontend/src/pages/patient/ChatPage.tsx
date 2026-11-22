@@ -2,11 +2,12 @@
 import { Children, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle, ArrowRight, CalendarDays, WifiOff, X } from 'lucide-react'
-import { getAppointments, getChatHistory, getHomework, sendChat } from '@/api'
+import { getAppointments, getChatHistory, getHomework, getSpecialist, sendChat } from '@/api'
 import { useAuth } from '@/auth/AuthContext'
-import type { Appointment, ChatAction, Homework, Lang, Message } from '@/types/contract'
+import type { Appointment, ChatAction, Homework, Lang, Message, SpecialistCard } from '@/types/contract'
 import { Headline, Hero, LogoOrb, Notice, Pill, Skeleton, SmallButton, TopBar, TypingDots } from '@/components/t4h/kit'
 import { ActionCard } from '@/components/t4h/actions'
+import { shortName } from '@/components/t4h/specialist'
 import { dayLabel, greeting, partOfDay, timeLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -48,6 +49,11 @@ export default function ChatPage() {
   const [input, setInput] = useState('')
   const [urgent, setUrgent] = useState<Appointment | null>(null)
   const [cards, setCards] = useState<Record<string, ChatAction[]>>({}) // Nour's tool cards, by AI message id
+  const [specialist, setSpecialist] = useState<SpecialistCard | null>(null)
+
+  useEffect(() => {
+    if (me?.specialist_id) getSpecialist(me.specialist_id).then(setSpecialist).catch(() => setSpecialist(null))
+  }, [me?.specialist_id])
 
   async function load() {
     setLoading(true)
@@ -125,7 +131,7 @@ export default function ChatPage() {
               <CalendarDays className="size-[18px]" />
             </span>
             <p className="flex-1 text-[14px] leading-snug">
-              Your specialist found an earlier slot to see you: <strong className="font-semibold">{dayLabel(urgent.starts_at)} at {timeLabel(urgent.starts_at)}</strong>.
+              {specialist ? shortName(specialist.nickname) : 'Your specialist'} found an earlier slot to see you: <strong className="font-semibold">{dayLabel(urgent.starts_at)} at {timeLabel(urgent.starts_at)}</strong>.
             </p>
             <button type="button" aria-label="Dismiss" onClick={() => setUrgent(null)} className="flex size-8 shrink-0 items-center justify-center rounded-full bg-soft">
               <X className="size-4" />
@@ -161,6 +167,7 @@ export default function ChatPage() {
                   <span className="text-[38px] leading-none tracking-[-1.5px]">{timeLabel(next.starts_at)}</span>
                   <span className="text-[12.5px] text-teal-deep">{next.type === 'urgent' ? 'earlier slot' : 'weekly session'}</span>
                 </p>
+                {specialist && <p className="mt-2 text-[13px] text-teal-deep">with {shortName(specialist.nickname)}</p>}
               </div>
             )}
             {homework.length > 0 && (

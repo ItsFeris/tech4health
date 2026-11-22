@@ -10,7 +10,7 @@ from app.errors import not_found
 from app.models import (
     Alert, Appointment, Checkin, Homework, Me, Message, NewAppointmentBody, NewHomeworkBody, PatientContext,
     PatientOnboardingBody, PatientRow, QuestionnaireResult, RiskResult, SessionNote, SessionNoteBody,
-    SpecialistOnboardingBody, UpdateAppointmentBody, UpdateHomeworkBody, WeekData, WeeklySummary, WeeklySummaryContent,
+    SpecialistCard, SpecialistOnboardingBody, Takeaways, UpdateAppointmentBody, UpdateHomeworkBody, WeekData, WeeklySummary, WeeklySummaryContent,
 )
 
 from .common import RISK_ORDER, build_patient_row, days_from_now, new_id, now_iso
@@ -24,6 +24,7 @@ DEMO_TOKENS = {"demo-patient": PATIENT_C_ID, "demo-specialist": SPECIALIST_ID}
 
 profiles: dict[str, dict] = {}
 patient_profiles: dict[str, dict] = {}
+specialist_profiles: dict[str, dict] = {}
 appointments: dict[str, dict] = {}
 notes: dict[str, dict] = {}
 homework: dict[str, dict] = {}
@@ -35,7 +36,17 @@ summaries: dict[str, dict] = {}
 
 
 def _seed() -> None:
-    profiles[SPECIALIST_ID] = {"id": SPECIALIST_ID, "role": "specialist", "nickname": "Dr. Amira", "language": "fr"}
+    profiles[SPECIALIST_ID] = {"id": SPECIALIST_ID, "role": "specialist", "nickname": "Dr. Salma Trabelsi", "language": "fr"}
+    # Specialists patients can choose from (only Dr. Salma can log in: demo-specialist).
+    for sid, name, spec, bio, langs, years, price in [
+        (SPECIALIST_ID, None, "Clinical psychologist", "I help young adults with anxiety, stress and sleep. We go at your pace.", ["darija", "fr", "ar"], 12, 70),
+        ("00000000-0000-4000-8000-000000000002", "Dr. Hichem Bouaziz", "Psychiatrist", "Depression, bipolar disorder and medication follow-up.", ["darija", "fr"], 18, 90),
+        ("00000000-0000-4000-8000-000000000003", "Leila Mabrouk", "Psychotherapist", "Trauma, relationships and panic. A calm, safe space.", ["darija", "ar", "en"], 9, 60),
+        ("00000000-0000-4000-8000-000000000004", "Dr. Omar Kallel", "Clinical psychologist", "Exam stress, students and self-esteem.", ["darija", "fr", "en"], 6, 50),
+    ]:
+        if name:
+            profiles[sid] = {"id": sid, "role": "specialist", "nickname": name, "language": "fr"}
+        specialist_profiles[sid] = {"specialty": spec, "bio": bio, "languages": langs, "years": years, "price": price, "photo_url": None, "verified": True, "accepting": True}
     for pid, name, lang in [(PATIENT_A_ID, "Mehdi", "fr"), (PATIENT_B_ID, "Karim", "darija"), (PATIENT_C_ID, "Yasmine", "darija")]:
         profiles[pid] = {"id": pid, "role": "patient", "nickname": name, "language": lang}
         patient_profiles[pid] = {
@@ -46,6 +57,12 @@ def _seed() -> None:
     for pid, days, hour, kind in [(PATIENT_C_ID, 3, 15, "weekly"), (PATIENT_A_ID, 2, 9, "weekly"), (PATIENT_B_ID, 1, 11, "urgent")]:
         aid = new_id()
         appointments[aid] = {"id": aid, "patient_id": pid, "specialist_id": SPECIALIST_ID, "starts_at": days_from_now(days, hour), "type": kind, "status": "scheduled"}
+    past = new_id()
+    appointments[past] = {"id": past, "patient_id": PATIENT_C_ID, "specialist_id": SPECIALIST_ID, "starts_at": days_from_now(-4, 15), "type": "weekly", "status": "done"}
+    notes[past] = {
+        "appointment_id": past, "notes": "Presentation anxiety. Introduced 4-7-8 breathing and an evening three-things journal.",
+        "takeaways": "Small steps count. If the breathing feels awkward at first, that's normal: try it just once a day and tell me how it went.",
+    }
     for pid, title, done in [
         (PATIENT_C_ID, "5-minute breathing, every evening", False),
         (PATIENT_C_ID, "Write down 3 good things each day", True),
@@ -93,10 +110,38 @@ async def get_profile(user_id: str) -> Optional[Me]:
     return _me(user_id) if user_id in profiles else None
 
 
+def _card(sid: str) -> SpecialistCard:
+    return SpecialistCard(id=sid, nickname=profiles[sid]["nickname"], **specialist_profiles.get(sid, {}))
+
+
+async def list_specialists() -> list[SpecialistCard]:
+    """Verified specialists that accept new patients."""
+    return [_card(sid) for sid, sp in specialist_profiles.items() if sp.get("verified") and sp.get("accepting", True)]
+
+
+async def get_specialist(specialist_id: str) -> Optional[SpecialistCard]:
+    p = profiles.get(specialist_id)
+    return _card(specialist_id) if p and p["role"] == "specialist" else None
+
+
+async def verify_specialist(specialist_id: str) -> SpecialistCard:
+    specialist_profiles.setdefault(specialist_id, {})["verified"] = True
+    return _card(specialist_id)
+
+
+async def latest_takeaways(patient_id: str) -> Optional[Takeaways]:
+    done = [a for a in appointments.values() if a["patient_id"] == patient_id and a["id"] in notes and notes[a["id"]].get("takeaways")]
+    if not done:
+        return None
+    a = max(done, key=lambda x: x["starts_at"])
+    return Takeaways(appointment_id=a["id"], session_date=a["starts_at"], takeaways=notes[a["id"]]["takeaways"])
+
+
 async def create_patient_profile(user_id: str, body: PatientOnboardingBody) -> Me:
+    chosen = body.specialist_id if body.specialist_id in {c.id for c in await list_specialists()} else SPECIALIST_ID
     profiles[user_id] = {"id": user_id, "role": "patient", "nickname": body.nickname, "language": body.language}
     patient_profiles[user_id] = {
-        "user_id": user_id, "specialist_id": SPECIALIST_ID, "consent": body.consent,
+        "user_id": user_id, "specialist_id": chosen, "consent": body.consent,
         "emergency_name": body.emergency_name, "emergency_email": body.emergency_email,
     }
     return _me(user_id)
@@ -104,6 +149,10 @@ async def create_patient_profile(user_id: str, body: PatientOnboardingBody) -> M
 
 async def create_specialist_profile(user_id: str, body: SpecialistOnboardingBody) -> Me:
     profiles[user_id] = {"id": user_id, "role": "specialist", "nickname": body.nickname, "language": body.language}
+    specialist_profiles[user_id] = {
+        "specialty": body.specialty, "bio": body.bio, "languages": body.languages, "years": body.years,
+        "price": body.price, "photo_url": body.photo_url, "verified": False, "accepting": True,
+    }
     return _me(user_id)
 
 

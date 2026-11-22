@@ -1,6 +1,6 @@
 # Tech4Health — Locked design spec (team contract)
 
-Version 1.3 · frozen Nov 22, 2026 (1.1: team cut to 3 people · 1.2: Dhia builds all screens from the design · 1.3: AI tools, `ChatReply.actions`) · source doc: https://claude.ai/artifact/XyrztKDxje9S6nP8ZJWQbW
+Version 1.4 · frozen Nov 22, 2026 (1.1: team cut to 3 people · 1.2: Dhia builds all screens from the design · 1.3: AI tools, `ChatReply.actions` · 1.4: choose a specialist, specialist price & verification, session takeaways) · source doc: https://claude.ai/artifact/XyrztKDxje9S6nP8ZJWQbW
 
 ## 1. Lock rules
 
@@ -141,7 +141,15 @@ create table patient_profiles (
 create table specialist_profiles (
   user_id    uuid primary key references profiles(id) on delete cascade,
   specialty  text,
-  bio        text
+  bio        text,
+  -- v1.4 (migration 003_specialist_cards.sql)
+  languages   lang[] not null default '{}',
+  years       smallint,             -- years of practice
+  price       smallint,             -- DT per 50-min session
+  photo_url   text,                 -- small data: URL or https URL
+  verified    boolean not null default false,  -- only verified specialists are listed to patients
+  verified_at timestamptz,
+  accepting   boolean not null default true
 );
 
 -- SESSIONS
@@ -241,8 +249,12 @@ The backend exposes 25 endpoints under `/api/v1`, all JSON and all behind the Su
 | Method | Path | Caller | Screen | Body | Returns |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/me` | both | A, B | — | `Me` |
-| POST | `/onboarding/patient` | patient | A | `nickname, language, consent, emergency_name?, emergency_email?` | `Me` |
-| POST | `/onboarding/specialist` | specialist | B | `nickname, language, specialty?, bio?` | `Me` |
+| POST | `/onboarding/patient` | patient | A | `nickname, language, consent, emergency_name?, emergency_email?, specialist_id?` (v1.4) | `Me` |
+| POST | `/onboarding/specialist` | specialist | B | `nickname, language, specialty?, bio?, languages?, years?, price?, photo_url?` (v1.4) | `Me` |
+| GET | `/specialists` | any logged-in | A | — | `SpecialistCard[]` (v1.4: verified and accepting only; works before onboarding) |
+| GET | `/specialists/{id}` | any logged-in | A, B | — | `SpecialistCard` (v1.4) |
+| POST | `/me/verify` | specialist | B | `id_card, license, selfie` (all true) | `SpecialistCard` (v1.4: checks are simulated in the app) |
+| GET | `/takeaways/latest` | patient | A | — | `Takeaways \| null` (v1.4: the specialist's note after the last session) |
 | PATCH | `/me/consent` | patient | A | `consent` | `Me` |
 | GET | `/appointments` | both | A, B | — | `Appointment[]` (own, upcoming first) |
 | POST | `/appointments` | specialist | B | `patient_id, starts_at, type` | `Appointment` |
@@ -308,6 +320,12 @@ interface ChatAction {      // v1.3
   moods?: Checkin[];                                                 // mood_history
 }
 
+interface SpecialistCard {   // v1.4: public info a patient sees
+  id: string; nickname: string; specialty: string | null; bio: string | null; languages: Lang[];
+  years: number | null; price: number | null; photo_url: string | null; verified: boolean; accepting: boolean;
+}
+interface Takeaways { appointment_id: string; session_date: string; takeaways: string; }   // v1.4
+
 interface CheckinReply { checkin: Checkin; ai_reply: string; risk: RiskResult; crisis: Crisis | null; }
 
 interface QuestionnaireResult { id: string; kind: 'phq9' | 'gad7'; score: number;
@@ -348,6 +366,10 @@ async def save_message(patient_id: UUID, sender: str, content: str, risk: str | 
 async def save_checkin(patient_id: UUID, mood: int, note: str | None) -> Checkin
 async def create_alert(patient_id: UUID, result: RiskResult, message_id: UUID | None) -> Alert
 async def request_urgent_slot(patient_id: UUID) -> Appointment   # next free slot within 48 h
+async def list_specialists() -> list[SpecialistCard]          # v1.4: verified + accepting
+async def get_specialist(specialist_id: UUID) -> SpecialistCard | None
+async def verify_specialist(specialist_id: UUID) -> SpecialistCard
+async def latest_takeaways(patient_id: UUID) -> Takeaways | None
 async def get_week_data(patient_id: UUID, week_start: date) -> WeekData
     # check-ins, homework, questionnaire results, and messages only if consent = full_chat
 

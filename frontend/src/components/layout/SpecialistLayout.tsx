@@ -1,12 +1,12 @@
 /** Specialist shell: logo, black pill navigation, profile chip and the live crisis toast. Pages draw their own Hero. Dhia owns this file. */
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Heart, LogOut, Users } from 'lucide-react'
+import { Bell, Heart, LogOut, ShieldCheck, Users } from 'lucide-react'
 import { useAuth } from '@/auth/AuthContext'
-import { getAlerts, subscribeToAlerts } from '@/api'
-import type { Alert } from '@/types/contract'
+import { getAlerts, getSpecialist, subscribeToAlerts } from '@/api'
+import type { Alert, SpecialistCard } from '@/types/contract'
 import { LogoGlyph, SmallButton } from '@/components/t4h/kit'
-import { initials } from '@/lib/format'
+import { SpecialistPhoto, VerifiedBadge } from '@/components/t4h/specialist'
 import { cn } from '@/lib/utils'
 
 export function SpecialistLayout() {
@@ -16,6 +16,11 @@ export function SpecialistLayout() {
   const onPatients = pathname === '/specialist' || pathname.startsWith('/specialist/patients')
   const [openAlerts, setOpenAlerts] = useState(0)
   const [toast, setToast] = useState<Alert | null>(null)
+  const [card, setCard] = useState<SpecialistCard | null>(null)
+
+  useEffect(() => {
+    if (me) getSpecialist(me.id).then(setCard).catch(() => setCard(null))
+  }, [me])
 
   useEffect(() => {
     const refresh = () => getAlerts('open').then((a) => setOpenAlerts(a.length)).catch(() => {})
@@ -54,9 +59,9 @@ export function SpecialistLayout() {
           </NavLink>
         </nav>
         <div className="flex items-center gap-2">
-          <span className="hidden h-10 items-center rounded-full bg-white px-4 text-sm shadow-[var(--shadow-soft)] sm:flex">EN</span>
+          {card?.verified && <VerifiedBadge className="hidden h-10 px-4 text-sm sm:inline-flex" />}
           <span className="flex h-11 items-center gap-2 rounded-full bg-white/80 py-1 pl-1 pr-2 shadow-[var(--shadow-soft)]">
-            <span className="flex size-9 items-center justify-center rounded-full bg-[linear-gradient(140deg,#DDD8FF,#F6CDDB)] text-[13px]">{initials(me?.nickname ?? '')}</span>
+            <SpecialistPhoto id={me?.id ?? ''} photoUrl={card?.photo_url} name={me?.nickname ?? ''} size={36} />
             <span className="max-w-[140px] truncate text-sm">{me?.nickname}</span>
             <button type="button" onClick={() => void logout()} aria-label="Log out" className="ml-1 flex size-8 items-center justify-center rounded-full text-sub hover:bg-soft hover:text-ink">
               <LogOut className="size-4" />
@@ -64,6 +69,20 @@ export function SpecialistLayout() {
           </span>
         </div>
       </header>
+
+      {card && !card.verified && (
+        <div className="relative z-20 mx-auto mt-4 max-w-[1216px] px-6">
+          <div className="flex items-center gap-3 rounded-[22px] bg-[linear-gradient(140deg,#F9E4BB_0%,#FBD7C8_100%)] px-4 py-3">
+            <ShieldCheck className="size-5 shrink-0" />
+            <p className="flex-1 text-[14.5px]">
+              <strong className="font-semibold">Patients can&apos;t find you yet.</strong> Verify your ID and license to appear in the list (about 3 minutes).
+            </p>
+            <SmallButton tone="ink" onClick={() => navigate('/specialist/verify')}>
+              Verify now
+            </SmallButton>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div role="alert" className="fixed right-6 top-24 z-40 w-[340px] rounded-[24px] bg-white p-4 shadow-[0_24px_60px_rgba(40,30,70,.18)]">

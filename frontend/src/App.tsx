@@ -25,6 +25,7 @@ import PatientsPage from '@/pages/specialist/PatientsPage'
 import PatientDetailPage from '@/pages/specialist/PatientDetailPage'
 import SummaryPage from '@/pages/specialist/SummaryPage'
 import AlertsPage from '@/pages/specialist/AlertsPage'
+import VerifyPage from '@/pages/specialist/VerifyPage'
 
 export default function App() {
   return (
@@ -49,6 +50,7 @@ export default function App() {
 
           <Route path="/specialist/onboarding" element={<SpecialistOnboardingPage />} />
           <Route element={<RequireRole role="specialist" />}>
+            <Route path="/specialist/verify" element={<VerifyPage />} />
             <Route path="/specialist" element={<SpecialistLayout />}>
               <Route index element={<PatientsPage />} />
               <Route path="patients/:patientId" element={<PatientDetailPage />} />

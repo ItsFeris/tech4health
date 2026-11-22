@@ -172,6 +172,8 @@ export interface PatientOnboardingBody {
   consent: Consent
   emergency_name?: string | null
   emergency_email?: string | null
+  /** v1.4: chosen in onboarding. null = first verified specialist. */
+  specialist_id?: string | null
 }
 
 export interface SpecialistOnboardingBody {
@@ -179,6 +181,41 @@ export interface SpecialistOnboardingBody {
   language: Lang
   specialty?: string | null
   bio?: string | null
+  /** v1.4 */
+  languages?: Lang[]
+  years?: number | null
+  /** DT per 50-min session */
+  price?: number | null
+  /** small data: URL or https URL */
+  photo_url?: string | null
+}
+
+/** v1.4: what patients see when they choose a specialist. Public info only. */
+export interface SpecialistCard {
+  id: string
+  nickname: string
+  specialty: string | null
+  bio: string | null
+  languages: Lang[]
+  years: number | null
+  price: number | null
+  photo_url: string | null
+  verified: boolean
+  accepting: boolean
+}
+
+/** v1.4: POST /me/verify. All three must be true. */
+export interface VerifyBody {
+  id_card: boolean
+  license: boolean
+  selfie: boolean
+}
+
+/** v1.4: the specialist's note for the patient after the last session. */
+export interface Takeaways {
+  appointment_id: string
+  session_date: string
+  takeaways: string
 }
 
 export interface NewAppointmentBody {

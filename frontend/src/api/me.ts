@@ -2,6 +2,7 @@ import type { Me, PatientOnboardingBody, SpecialistOnboardingBody, Consent } fro
 import { USE_MOCKS, mock, mockError, request } from './client'
 import { getMockRole } from './mockSession'
 import { mePatient, meSpecialist } from '@/mocks/me'
+import { specialists } from '@/mocks/specialists'
 
 /** GET /me — throws ApiRequestError with code "not_onboarded" (404) for a new account. */
 export function getMe(): Promise<Me> {
@@ -17,6 +18,7 @@ export function getMe(): Promise<Me> {
 export function onboardPatient(body: PatientOnboardingBody): Promise<Me> {
   if (USE_MOCKS) {
     Object.assign(mePatient, { nickname: body.nickname, language: body.language, consent: body.consent, emergency_name: body.emergency_name ?? null })
+    if (body.specialist_id && specialists.some((s) => s.id === body.specialist_id)) mePatient.specialist_id = body.specialist_id
     return mock(mePatient)
   }
   return request<Me>('POST', '/onboarding/patient', body)
@@ -26,6 +28,8 @@ export function onboardPatient(body: PatientOnboardingBody): Promise<Me> {
 export function onboardSpecialist(body: SpecialistOnboardingBody): Promise<Me> {
   if (USE_MOCKS) {
     Object.assign(meSpecialist, { nickname: body.nickname, language: body.language })
+    const card = specialists.find((s) => s.id === meSpecialist.id)
+    if (card) Object.assign(card, { nickname: body.nickname, specialty: body.specialty ?? null, bio: body.bio ?? null, languages: body.languages ?? [], years: body.years ?? null, price: body.price ?? null, photo_url: body.photo_url ?? null, verified: false })
     return mock(meSpecialist)
   }
   return request<Me>('POST', '/onboarding/specialist', body)

@@ -15,7 +15,7 @@ from app.errors import not_found
 from app.models import (
     Alert, Appointment, Checkin, Homework, Me, Message, NewAppointmentBody, NewHomeworkBody, PatientContext,
     PatientOnboardingBody, PatientRow, QuestionnaireResult, RiskResult, SessionNote, SessionNoteBody,
-    SpecialistOnboardingBody, UpdateAppointmentBody, UpdateHomeworkBody, WeekData, WeeklySummary, WeeklySummaryContent,
+    SpecialistCard, SpecialistOnboardingBody, Takeaways, UpdateAppointmentBody, UpdateHomeworkBody, WeekData, WeeklySummary, WeeklySummaryContent,
 )
 
 from .common import RISK_ORDER, build_patient_row, days_from_now, now_iso
@@ -48,12 +48,59 @@ async def get_profile(user_id: str) -> Optional[Me]:
               consent=pp.get("consent"), specialist_id=pp.get("specialist_id"), emergency_name=pp.get("emergency_name"))
 
 
+_CARD_COLS = "user_id, specialty, bio, languages, years, price, photo_url, verified, accepting, profiles(nickname)"
+
+
+def _card(row: dict) -> SpecialistCard:
+    return SpecialistCard(
+        id=row["user_id"], nickname=(row.get("profiles") or {}).get("nickname", ""),
+        **{k: row.get(k) for k in ("specialty", "bio", "years", "price", "photo_url")},
+        languages=row.get("languages") or [], verified=bool(row.get("verified")), accepting=row.get("accepting", True) is not False,
+    )
+
+
+async def list_specialists() -> list[SpecialistCard]:
+    """Verified specialists that accept new patients."""
+    rows = sb().table("specialist_profiles").select(_CARD_COLS).eq("verified", True).eq("accepting", True).execute().data
+    return [_card(r) for r in rows]
+
+
+async def get_specialist(specialist_id: str) -> Optional[SpecialistCard]:
+    r = _first(sb().table("specialist_profiles").select(_CARD_COLS).eq("user_id", specialist_id).limit(1).execute().data)
+    return _card(r) if r else None
+
+
+async def verify_specialist(specialist_id: str) -> SpecialistCard:
+    sb().table("specialist_profiles").update({"verified": True, "verified_at": now_iso()}).eq("user_id", specialist_id).execute()
+    card = await get_specialist(specialist_id)
+    if not card:
+        raise not_found("Specialist")
+    return card
+
+
+async def latest_takeaways(patient_id: str) -> Optional[Takeaways]:
+    appts = sb().table("appointments").select("id, starts_at").eq("patient_id", patient_id).lte("starts_at", now_iso()).order("starts_at", desc=True).limit(10).execute().data
+    if not appts:
+        return None
+    by_id = {a["id"]: a for a in appts}
+    notes = sb().table("session_notes").select("appointment_id, takeaways").in_("appointment_id", list(by_id)).execute().data
+    notes = [n for n in notes if n.get("takeaways")]
+    if not notes:
+        return None
+    n = max(notes, key=lambda x: by_id[x["appointment_id"]]["starts_at"])
+    return Takeaways(appointment_id=n["appointment_id"], session_date=by_id[n["appointment_id"]]["starts_at"], takeaways=n["takeaways"])
+
+
 async def create_patient_profile(user_id: str, body: PatientOnboardingBody) -> Me:
     sb().table("profiles").upsert({"id": user_id, "role": "patient", "nickname": body.nickname, "language": body.language}).execute()
-    # Matching is manual for the hackathon: the patient gets the first specialist in the database.
-    spec = _first(sb().table("profiles").select("id").eq("role", "specialist").order("created_at").limit(1).execute().data)
+    # The patient's choice if it is a verified specialist, else the first verified one (then any specialist).
+    verified = [c.id for c in await list_specialists()]
+    chosen = body.specialist_id if body.specialist_id in verified else (verified[0] if verified else None)
+    if not chosen:
+        spec = _first(sb().table("profiles").select("id").eq("role", "specialist").order("created_at").limit(1).execute().data)
+        chosen = spec["id"] if spec else None
     sb().table("patient_profiles").upsert({
-        "user_id": user_id, "specialist_id": spec["id"] if spec else None, "consent": body.consent,
+        "user_id": user_id, "specialist_id": chosen, "consent": body.consent,
         "emergency_name": body.emergency_name, "emergency_email": body.emergency_email,
     }).execute()
     return await get_profile(user_id)  # type: ignore[return-value]
@@ -61,7 +108,10 @@ async def create_patient_profile(user_id: str, body: PatientOnboardingBody) -> M
 
 async def create_specialist_profile(user_id: str, body: SpecialistOnboardingBody) -> Me:
     sb().table("profiles").upsert({"id": user_id, "role": "specialist", "nickname": body.nickname, "language": body.language}).execute()
-    sb().table("specialist_profiles").upsert({"user_id": user_id, "specialty": body.specialty, "bio": body.bio}).execute()
+    sb().table("specialist_profiles").upsert({
+        "user_id": user_id, "specialty": body.specialty, "bio": body.bio, "languages": body.languages,
+        "years": body.years, "price": body.price, "photo_url": body.photo_url,
+    }).execute()
     return await get_profile(user_id)  # type: ignore[return-value]
 
 

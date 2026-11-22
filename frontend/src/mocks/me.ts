@@ -14,6 +14,6 @@ export const mePatient: Me = {
 export const meSpecialist: Me = {
   id: SPECIALIST_ID,
   role: 'specialist',
-  nickname: 'Dr. Amira',
+  nickname: 'Dr. Salma Trabelsi',
   language: 'fr',
 }
