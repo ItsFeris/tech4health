@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Mic, Paperclip, Send, Sparkles } from 'lucide-react'
+import { Mic, Paperclip, Send, Sparkles } from 'lucide-react'
 import { getAppointments, getChatHistory, sendChat } from '@/api'
 import type { Appointment, Message } from '@/types/contract'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [urgentBanner, setUrgentBanner] = useState<string | null>(null)
+  const [sendError, setSendError] = useState<string | null>(null)
 
   useEffect(() => {
     async function init() {
@@ -45,6 +46,7 @@ export default function ChatPage() {
 
     const userText = input.trim()
     setInput('')
+    setSendError(null)
     setSending(true)
 
     try {
@@ -67,7 +69,9 @@ export default function ChatPage() {
         setUrgentBanner(`Votre spécialiste a été notifié et vous recevra en priorité le ${dateStr}.`)
       }
     } catch {
-      // Ignore
+      // Never lose what the patient wrote: put it back and say so.
+      setInput(userText)
+      setSendError("Votre message n'a pas pu être envoyé. Vérifiez votre connexion et réessayez. En cas d'urgence, utilisez le bouton SOS.")
     } finally {
       setSending(false)
     }
@@ -126,6 +130,12 @@ export default function ChatPage() {
         {urgentBanner && (
           <div className="rounded-2xl border border-amber-200 bg-[#FFF7ED] p-3.5 text-xs text-amber-900 shadow-xs">
             {urgentBanner}
+          </div>
+        )}
+
+        {sendError && (
+          <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-800 shadow-xs">
+            {sendError}
           </div>
         )}
 
