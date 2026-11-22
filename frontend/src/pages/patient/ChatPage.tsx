@@ -30,6 +30,8 @@ interface Pending {
   failed: boolean
 }
 
+const FADE_TOP = { maskImage: 'linear-gradient(to bottom, transparent 0, #000 40px)', WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 40px)' }
+
 export default function ChatPage() {
   const navigate = useNavigate()
   const { me } = useAuth()
@@ -106,7 +108,7 @@ export default function ChatPage() {
     // Fixed full-height screen: the header stays put, only the conversation scrolls.
     <div className="fixed inset-0 mx-auto flex max-w-[430px] flex-col overflow-hidden bg-background">
       <Hero tone="teal" height={380} />
-      <div className="relative z-10 flex shrink-0 flex-col gap-4 px-5 pb-3 pt-6">
+      <div className="relative z-10 flex shrink-0 flex-col gap-4 px-5 pt-6">
         <TopBar
           center={
             <Pill>
@@ -180,7 +182,8 @@ export default function ChatPage() {
 
       </div>
 
-      <div className="no-scrollbar relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-1">
+      {/* Soft fade at the top edge so messages melt under the header instead of a hard cut */}
+      <div className="no-scrollbar relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-6" style={FADE_TOP}>
         <section aria-label="Conversation" aria-live="polite" dir={rtl ? 'rtl' : undefined} lang={rtl ? 'ar' : undefined} className="flex flex-col gap-2.5">
           {loading ? (
             <>
