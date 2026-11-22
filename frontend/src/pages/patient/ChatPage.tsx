@@ -19,13 +19,6 @@ const WELCOME: Record<Lang, string> = {
   en: "Hi! I'm Nour. I'm here to listen, any time. How are you feeling today?",
 }
 
-const QUICK: Record<Lang, { breathe: string; talk: string }> = {
-  darija: { breathe: 'Netneffsou m3a b3adhna?', talk: 'N7eb nehki barka' },
-  ar: { breathe: 'هل نتنفس معاً؟', talk: 'أريد أن أتحدث فقط' },
-  fr: { breathe: 'On respire ensemble ?', talk: 'Je veux juste parler' },
-  en: { breathe: 'Can we breathe together?', talk: 'I just want to talk' },
-}
-
 interface Pending {
   id: string
   content: string
@@ -210,17 +203,8 @@ export default function ChatPage() {
           )}
         </>
       )}
-      <div ref={bottomRef} aria-hidden="true" className={cn('shrink-0', desktop ? 'h-2' : 'h-[232px]')} />
+      <div ref={bottomRef} aria-hidden="true" className={cn('shrink-0', desktop ? 'h-2' : 'h-[180px]')} />
     </section>
-  )
-
-  const chips = (
-    <div className={cn('no-scrollbar flex gap-2 overflow-x-auto pb-2.5', desktop ? 'px-0' : 'px-4')}>
-      <Chip disabled={sending} onClick={() => void send(QUICK[lang].breathe)}>Breathe together</Chip>
-      <Chip disabled={sending} onClick={() => void send(QUICK[lang].talk)}>Just talk</Chip>
-      <Chip onClick={() => navigate('/patient/checkin')}>Log my mood</Chip>
-      {desktop && <Chip onClick={() => navigate('/patient/homework')}>My homework</Chip>}
-    </div>
   )
 
   const form = (
@@ -267,7 +251,6 @@ export default function ChatPage() {
               {conversation}
             </div>
             <div className="px-6 pb-5 pt-2">
-              {chips}
               {form}
             </div>
           </div>
@@ -320,8 +303,6 @@ export default function ChatPage() {
       </div>
 
       <div className="fixed inset-x-0 bottom-[88px] z-20 mx-auto max-w-[430px] bg-[linear-gradient(180deg,rgba(248,248,250,0)_0%,#F8F8FA_30%)] pb-3 pt-6">
-        {/* Quick suggestions: always visible, right above the text box */}
-        {chips}
         {form}
       </div>
     </div>
@@ -348,13 +329,5 @@ function Bubble({ sender, text, muted, children }: { sender: 'user' | 'ai'; text
         {extra && children}
       </div>
     </div>
-  )
-}
-
-function Chip({ onClick, children, disabled }: { onClick: () => void; children: string; disabled?: boolean }) {
-  return (
-    <button type="button" onClick={onClick} disabled={disabled} className="h-[38px] shrink-0 rounded-full border border-line bg-white px-4 text-[14px] text-ink transition hover:bg-soft disabled:opacity-50">
-      {children}
-    </button>
   )
 }
