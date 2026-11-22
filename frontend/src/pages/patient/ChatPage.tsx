@@ -1,5 +1,5 @@
 // Patient home: chat with Nour (design: 3 · Chat, plus loading, offline/error and Arabic RTL states).
-import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
+import { Children, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle, ArrowRight, CalendarDays, WifiOff, X } from 'lucide-react'
 import { getAppointments, getChatHistory, getHomework, sendChat } from '@/api'
@@ -188,10 +188,9 @@ export default function ChatPage() {
             <>
               {messages.length === 0 && <Bubble sender="ai" text={WELCOME[lang]} />}
               {messages.map((m) => (
-                <Fragment key={m.id}>
-                  <Bubble sender={m.sender} text={m.content} />
+                <Bubble key={m.id} sender={m.sender} text={m.content}>
                   {cards[m.id]?.map((a, i) => <ActionCard key={i} action={a} onSend={(t) => void send(t)} />)}
-                </Fragment>
+                </Bubble>
               ))}
               {pending && (
                 <div className="flex flex-col items-end gap-1.5">
@@ -249,20 +248,25 @@ export default function ChatPage() {
   )
 }
 
-function Bubble({ sender, text, muted }: { sender: 'user' | 'ai'; text: string; muted?: boolean }) {
+function Bubble({ sender, text, muted, children }: { sender: 'user' | 'ai'; text: string; muted?: boolean; children?: ReactNode }) {
   const ai = sender === 'ai'
+  // Tool cards (exercise, mood saved...) live inside Nour's bubble, as the end of the same reply.
+  const extra = ai && Children.toArray(children).length > 0
   return (
     <div className={cn('flex items-end gap-2', ai ? 'justify-start' : 'justify-end')}>
       {ai && <LogoOrb size={28} className="mb-0.5 shadow-none" />}
-      <p
-        dir="auto"
+      <div
         className={cn(
-          'max-w-[78%] whitespace-pre-wrap rounded-[22px] px-4 py-3 text-[15.5px] leading-[1.4]',
+          'rounded-[22px] px-4 py-3 text-[15.5px] leading-[1.4]',
+          extra ? 'w-[82%]' : 'max-w-[78%]',
           ai ? 'rounded-bl-md bg-white text-ink shadow-[var(--shadow-soft)]' : muted ? 'rounded-br-md bg-[#77767E] text-white' : 'rounded-br-md bg-ink text-white',
         )}
       >
-        {text}
-      </p>
+        <p dir="auto" className="whitespace-pre-wrap">
+          {text}
+        </p>
+        {extra && children}
+      </div>
     </div>
   )
 }

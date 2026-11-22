@@ -1,4 +1,4 @@
-/** Cards opened by Nour's tools (ChatReply.actions). One card per action, shown under the AI message. */
+/** Nour's tool cards (ChatReply.actions). Rendered inside the AI bubble, as the end of its reply. */
 import { useEffect, useRef, useState } from 'react'
 import { CalendarDays, Check, Hand, Wind } from 'lucide-react'
 import type { ChatAction, Homework } from '@/types/contract'
@@ -33,7 +33,7 @@ export function ActionCard({ action, onSend }: Props) {
 
 function Shell({ label, icon, children, className }: { label: string; icon?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('ms-9 max-w-[86%] rounded-[24px] bg-white p-4 shadow-[var(--shadow-soft)]', className)}>
+    <div className={cn('mt-3 border-t border-line pt-3', className)}>
       <div className="mb-3 flex items-center gap-1.5 text-sub">
         {icon}
         <SectionLabel>{label}</SectionLabel>
