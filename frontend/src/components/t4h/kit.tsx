@@ -1,5 +1,5 @@
 /**
- * Tech4Health UI kit, built from the Claude Design file. Dhia owns this file; every screen imports it.
+ * Mindora UI kit, built from the Claude Design file. Dhia owns this file; every screen imports it.
  * Look: ink black + pastel gradient heroes, Inter Tight, big light headlines, white floating pills.
  */
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react'

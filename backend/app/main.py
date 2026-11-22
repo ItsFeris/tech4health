@@ -20,7 +20,7 @@ from app.errors import install_error_handlers
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
-app = FastAPI(title="Tech4Health API", version="1.1")
+app = FastAPI(title="Mindora API", version="1.1")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_origin, "http://localhost:5173", "http://127.0.0.1:5173"],

@@ -108,7 +108,7 @@ export default function OnboardingPage() {
 
         {step === 0 && (
           <section className="mt-16 flex flex-col gap-3">
-            <Headline eyebrow="Welcome to Tech4Health" title="What should we call you?" />
+            <Headline eyebrow="Welcome to Mindora" title="What should we call you?" />
             <div className="mt-6">
               <FieldLabel htmlFor="nick">First name or nickname</FieldLabel>
               <Field id="nick" autoFocus maxLength={40} placeholder="e.g. Yasmine" value={nickname} onChange={(e) => setNickname(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && next()} />

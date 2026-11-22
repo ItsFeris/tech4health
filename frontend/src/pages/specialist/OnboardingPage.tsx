@@ -91,7 +91,7 @@ export default function OnboardingPage() {
 
           {step === 0 ? (
             <section className="mt-12 flex flex-col gap-3">
-              <Headline eyebrow="Welcome to Tech4Health" title="Tell patients about you" />
+              <Headline eyebrow="Welcome to Mindora" title="Tell patients about you" />
               <div className="mt-5">
                 <FieldLabel htmlFor="sname">Full name, as on your ID</FieldLabel>
                 <Field id="sname" autoFocus maxLength={60} placeholder="e.g. Dr. Salma Trabelsi" value={name} onChange={(e) => setName(e.target.value)} />

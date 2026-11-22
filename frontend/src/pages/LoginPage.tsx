@@ -51,7 +51,7 @@ export default function LoginPage() {
       </div>
       <form onSubmit={submit} className="relative z-10 flex min-h-svh flex-col gap-3.5 px-[22px] pb-7 pt-6 lg:min-h-0 lg:w-full lg:max-w-[420px] lg:gap-4 lg:px-0 lg:py-12">
         <div className="flex items-center justify-between lg:hidden">
-          <GlassCircle aria-label="Tech4Health">
+          <GlassCircle aria-label="Mindora">
             <LogoGlyph className="size-6" />
           </GlassCircle>
           <GlassCircle aria-label="Language: English" className="text-sm font-medium">
@@ -59,9 +59,9 @@ export default function LoginPage() {
           </GlassCircle>
         </div>
 
-        <Headline eyebrow="Care between sessions" title="Tech4Health" size="xl" className="mt-10 lg:hidden" />
+        <Headline eyebrow="Care between sessions" title="Mindora" size="xl" className="mt-10 lg:hidden" />
         <div className="hidden lg:block">
-          <p className="text-[15px] text-ink-2">{mode === 'signup' ? 'Welcome to Tech4Health' : 'Good to see you'}</p>
+          <p className="text-[15px] text-ink-2">{mode === 'signup' ? 'Welcome to Mindora' : 'Good to see you'}</p>
           <h2 className="mt-1 text-[40px] leading-tight tracking-[-1.3px]">{mode === 'signup' ? 'Create your account' : 'Welcome back'}</h2>
         </div>
         <div className="flex justify-center lg:hidden">
@@ -153,7 +153,7 @@ function BrandPanel() {
         <span className="flex size-[46px] items-center justify-center rounded-full border border-white/80 bg-white/55">
           <LogoGlyph className="size-[22px]" />
         </span>
-        <span className="text-[19px] tracking-[-0.4px]">Tech4Health</span>
+        <span className="text-[19px] tracking-[-0.4px]">Mindora</span>
       </div>
 
       <div className="relative my-auto py-12 text-center">

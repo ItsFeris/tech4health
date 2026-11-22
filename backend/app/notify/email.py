@@ -40,8 +40,8 @@ async def alert_emergency_contact(ctx: PatientContext) -> None:
     if ctx.emergency_email:
         await send(
             ctx.emergency_email,
-            "Tech4Health: please check on someone close to you",
-            f"Hello {ctx.emergency_name or ''},\n\n{ctx.nickname} listed you as their trusted contact on Tech4Health. "
+            "Mindora: please check on someone close to you",
+            f"Hello {ctx.emergency_name or ''},\n\n{ctx.nickname} listed you as their trusted contact on Mindora. "
             "Our safety system detected that they may need support right now. Please reach out to them.\n\n"
             "Their specialist has also been alerted.",
         )

@@ -38,7 +38,7 @@ export function PatientLayout() {
           <span className="flex size-[46px] items-center justify-center rounded-full bg-white/70 text-ink shadow-[var(--shadow-soft)]">
             <LogoGlyph className="size-5" />
           </span>
-          <span className="text-[19px] tracking-[-0.3px]">Tech4Health</span>
+          <span className="text-[19px] tracking-[-0.3px]">Mindora</span>
         </Link>
         <nav aria-label="Main" className="flex items-center gap-1 rounded-full bg-white/70 p-1 shadow-[var(--shadow-float)] backdrop-blur">
           {tabs.map(({ to, label, end }) => (
