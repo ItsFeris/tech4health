@@ -98,7 +98,6 @@ export default function ChatPage() {
   const todo = homework.filter((h) => !h.done).length
   const offline = loadError || Boolean(pending?.failed)
   const sending = Boolean(pending && !pending.failed)
-  const lastIsAi = messages.length === 0 || messages[messages.length - 1].sender === 'ai'
 
   return (
     <div className="relative min-h-svh overflow-hidden">
@@ -209,20 +208,20 @@ export default function ChatPage() {
                   <span className="text-[12.5px] text-sub">Nour is typing…</span>
                 </div>
               )}
-              {!pending && lastIsAi && (
-                <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pt-1">
-                  <Chip onClick={() => void send(QUICK[lang].breathe)}>Breathe together</Chip>
-                  <Chip onClick={() => void send(QUICK[lang].talk)}>Just talk</Chip>
-                  <Chip onClick={() => navigate('/patient/checkin')}>Log my mood</Chip>
-                </div>
-              )}
             </>
           )}
-          <div ref={bottomRef} aria-hidden="true" className="h-40 shrink-0" />
+          <div ref={bottomRef} aria-hidden="true" className="h-52 shrink-0" />
         </section>
       </div>
 
-      <form onSubmit={onSubmit} className="fixed inset-x-0 bottom-[88px] z-20 mx-auto flex max-w-[430px] items-center gap-2.5 bg-[linear-gradient(180deg,rgba(248,248,250,0)_0%,#F8F8FA_38%)] px-4 pb-3 pt-6">
+      <div className="fixed inset-x-0 bottom-[88px] z-20 mx-auto max-w-[430px] bg-[linear-gradient(180deg,rgba(248,248,250,0)_0%,#F8F8FA_30%)] pb-3 pt-6">
+        {/* Quick suggestions: always visible, right above the text box */}
+        <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-2.5">
+          <Chip disabled={sending} onClick={() => void send(QUICK[lang].breathe)}>Breathe together</Chip>
+          <Chip disabled={sending} onClick={() => void send(QUICK[lang].talk)}>Just talk</Chip>
+          <Chip onClick={() => navigate('/patient/checkin')}>Log my mood</Chip>
+        </div>
+      <form onSubmit={onSubmit} className="flex items-center gap-2.5 px-4">
         <label htmlFor="chat-input" className="sr-only">
           Message to Nour
         </label>
@@ -239,6 +238,7 @@ export default function ChatPage() {
           <ArrowRight className={cn('size-5', rtl && 'rotate-180')} />
         </button>
       </form>
+      </div>
     </div>
   )
 }
@@ -261,9 +261,9 @@ function Bubble({ sender, text, muted }: { sender: 'user' | 'ai'; text: string; 
   )
 }
 
-function Chip({ onClick, children }: { onClick: () => void; children: string }) {
+function Chip({ onClick, children, disabled }: { onClick: () => void; children: string; disabled?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className="h-[38px] shrink-0 rounded-full border border-line bg-white px-4 text-[14px] text-ink transition hover:bg-soft">
+    <button type="button" onClick={onClick} disabled={disabled} className="h-[38px] shrink-0 rounded-full border border-line bg-white px-4 text-[14px] text-ink transition hover:bg-soft disabled:opacity-50">
       {children}
     </button>
   )
