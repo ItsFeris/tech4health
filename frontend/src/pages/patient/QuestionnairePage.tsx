@@ -115,7 +115,7 @@ export default function QuestionnairePage() {
     return (
       <div className="relative min-h-svh overflow-hidden">
         <Hero tone="sky" />
-        <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 pt-6">
+        <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 pt-6 lg:mx-auto lg:max-w-[760px] lg:px-6">
           <TopBar
             left={
               <GlassCircle aria-label="Leave the check-up" onClick={() => setMode('choose')}>
@@ -136,7 +136,7 @@ export default function QuestionnairePage() {
               {idx + 1} of {qs.length}
             </span>
           </div>
-          <Headline eyebrow="Over the last 2 weeks, how often have you been bothered by…" title={qs[idx]} size="md" className="mt-4 [&_h1]:text-[28px] [&_h1]:leading-[1.12] [&_p]:mx-auto [&_p]:max-w-[260px]" />
+          <Headline eyebrow="Over the last 2 weeks, how often have you been bothered by…" title={qs[idx]} size="md" className="mt-4 [&_h1]:text-[28px] [&_h1]:leading-[1.12] [&_p]:mx-auto [&_p]:max-w-[260px] lg:[&_h1]:text-[42px] lg:[&_p]:max-w-none" />
           <div role="radiogroup" aria-label="Answer" className="mt-3 flex flex-col gap-2.5">
             {OPTIONS.map((o, v) => (
               <ChoiceRow key={o} on={answers[idx] === v} onClick={() => setAnswers((a) => a.map((x, i) => (i === idx ? v : x)))} label={o} />
@@ -171,7 +171,7 @@ export default function QuestionnairePage() {
     return (
       <div className="relative min-h-svh overflow-hidden">
         <Hero tone="pink" variant="flower" />
-        <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 pt-6">
+        <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 pt-6 lg:mx-auto lg:max-w-[900px] lg:px-6">
           <TopBar
             left={
               <GlassCircle aria-label="Back to check-ups" onClick={() => setMode('choose')}>
@@ -204,7 +204,7 @@ export default function QuestionnairePage() {
   return (
     <div className="relative min-h-svh overflow-hidden">
       <Hero tone="sky" />
-      <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 pt-6">
+      <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 pt-6 lg:mx-auto lg:max-w-[760px] lg:px-6">
         <TopBar
           center={
             <Pill>

@@ -58,7 +58,8 @@ export default function SettingsPage() {
   return (
     <div className="relative min-h-svh overflow-hidden">
       <Hero tone="lavender" />
-      <div className="relative z-10 flex flex-col gap-3.5 px-5 pb-6 pt-6">
+      <div className="relative z-10 flex flex-col gap-3.5 px-5 pb-6 pt-6 lg:mx-auto lg:grid lg:max-w-[1216px] lg:grid-cols-3 lg:items-start lg:gap-5 lg:px-6">
+        <div className="lg:col-span-3">
         <TopBar
           center={
             <Pill>
@@ -66,9 +67,10 @@ export default function SettingsPage() {
             </Pill>
           }
         />
-        <Headline eyebrow="Your space" title={me?.nickname ?? ''} className="mb-3 mt-6" />
+        </div>
+        <Headline eyebrow="Your space" title={me?.nickname ?? ''} className="mb-3 mt-6 lg:col-span-3 lg:mb-2 lg:mt-5" />
 
-        <Card>
+        <Card className="lg:col-start-3 lg:row-start-3">
           <SectionLabel>Language</SectionLabel>
           <div className="mt-3 flex flex-wrap gap-2">
             {LANGS.map((l) => (
@@ -80,7 +82,7 @@ export default function SettingsPage() {
           <p className="mt-2.5 text-[12.5px] text-sub">Nour talks to you in this language. To change it, ask your specialist.</p>
         </Card>
 
-        <Card>
+        <Card className="lg:col-start-2 lg:row-start-3">
           <SectionLabel>Privacy</SectionLabel>
           <div className="mt-3 flex items-center justify-between gap-4">
             <div>
@@ -109,7 +111,7 @@ export default function SettingsPage() {
           )}
         </Card>
 
-        <Card>
+        <Card className="lg:col-start-1 lg:row-start-3">
           <SectionLabel>My specialist</SectionLabel>
           {specialist && (
             <div className="mt-3 flex items-center gap-3.5">
@@ -146,7 +148,7 @@ export default function SettingsPage() {
           )}
         </Card>
 
-        <Card className="flex items-center gap-3.5 py-4">
+        <Card className="flex items-center gap-3.5 py-4 lg:col-start-1 lg:row-start-4">
           <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-soft">
             <Phone className="size-[18px]" fill="currentColor" />
           </span>
@@ -156,7 +158,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <button type="button" onClick={() => void logout()} className="flex h-[52px] items-center justify-center gap-2 rounded-full border border-line bg-white text-[15px] text-sos">
+        <button type="button" onClick={() => void logout()} className="lg:col-start-1 lg:row-start-5 flex h-[52px] items-center justify-center gap-2 rounded-full border border-line bg-white text-[15px] text-sos">
           <LogOut className="size-4" /> Log out
         </button>
       </div>

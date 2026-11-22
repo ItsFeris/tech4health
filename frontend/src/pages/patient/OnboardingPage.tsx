@@ -109,9 +109,9 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden">
+    <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden lg:max-w-none">
       <Hero tone={STEPS[step].tone} variant={STEPS[step].variant} />
-      <div className="relative z-10 flex flex-1 flex-col px-5 pb-7 pt-6">
+      <div className={cn('relative z-10 flex flex-1 flex-col px-5 pb-7 pt-6 lg:mx-auto lg:w-full lg:px-6', step === 2 ? 'lg:max-w-[1180px]' : 'lg:max-w-[560px]')}>
         <div className="flex items-center justify-between">
           <GlassCircle aria-label={step === 0 ? 'Log out' : 'Back'} onClick={() => (step === 0 ? void logout() : setStep(step - 1))}>
             <ArrowLeft className="size-5" />
@@ -162,7 +162,7 @@ export default function OnboardingPage() {
         {step === 2 && (
           <section className="mt-10 flex flex-col gap-3">
             <Headline eyebrow="One weekly session, Nour in between" title="Choose your specialist" />
-            <div className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-1" role="group" aria-label="Filter">
+            <div className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-1 lg:justify-center" role="group" aria-label="Filter">
               {FILTERS.map((f) => (
                 <button
                   key={f.id}
@@ -175,7 +175,7 @@ export default function OnboardingPage() {
                 </button>
               ))}
             </div>
-            <div role="radiogroup" aria-label="Specialists" className="flex flex-col gap-3">
+            <div role="radiogroup" aria-label="Specialists" className="flex flex-col gap-3 lg:grid lg:grid-cols-2 xl:grid-cols-3">
               {specialists === null && !specialistsError && [0, 1, 2].map((i) => <Skeleton key={i} className="h-[150px] rounded-[26px]" />)}
               {specialistsError && <Notice tone="error">Could not load the specialists. You can continue: we&apos;ll match you with one.</Notice>}
               {specialists?.length === 0 && <Notice tone="info">No specialists are listed yet. Continue: we&apos;ll match you with one.</Notice>}
@@ -225,7 +225,7 @@ export default function OnboardingPage() {
           </section>
         )}
 
-        <div className="mt-auto flex flex-col gap-3 pt-8">
+        <div className={cn('mt-auto flex flex-col gap-3 pt-8', step === 2 && 'lg:ml-auto lg:w-[420px]')}>
           {error && <Notice tone="error">{error}</Notice>}
           <Cta onClick={next} disabled={!canContinue} loading={busy && step === 4}>
             {step === 4 ? 'Start talking to Nour' : step === 2 && chosen ? `Continue with ${shortName(chosen.nickname)}` : 'Continue'}

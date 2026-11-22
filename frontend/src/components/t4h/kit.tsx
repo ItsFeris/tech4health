@@ -125,7 +125,8 @@ export function SosButton({ className }: { className?: string }) {
 /** Left mark · center pill · right action, as on every patient screen. */
 export function TopBar({ left, center, right }: { left?: ReactNode; center?: ReactNode; right?: ReactNode }) {
   return (
-    <div className="relative z-10 flex items-center justify-between gap-2">
+    // On desktop the patient layout draws the header: the phone top bar only keeps its space.
+    <div className="relative z-10 flex items-center justify-between gap-2 lg:invisible">
       <div className="flex w-[52px] justify-start">{left ?? <LogoOrb />}</div>
       <div className="flex min-w-0 justify-center">{center}</div>
       <div className="flex w-[52px] justify-end">{right ?? <SosButton />}</div>
@@ -137,7 +138,7 @@ export function Headline({ eyebrow, title, className, size = 'lg' }: { eyebrow?:
   return (
     <div className={cn('relative z-10 text-center', className)}>
       {eyebrow && <p className="text-[15px] text-ink-2">{eyebrow}</p>}
-      <h1 className={cn('headline mt-1 text-ink', size === 'xl' ? 'text-[46px]' : size === 'md' ? 'text-[28px]' : 'text-[34px]')}>{title}</h1>
+      <h1 className={cn('headline mt-1 text-ink', size === 'xl' ? 'text-[46px] lg:text-[56px]' : size === 'md' ? 'text-[28px] lg:text-[34px]' : 'text-[34px] lg:text-[46px]')}>{title}</h1>
     </div>
   )
 }

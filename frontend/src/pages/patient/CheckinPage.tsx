@@ -7,6 +7,7 @@ import type { Checkin } from '@/types/contract'
 import { Card, Headline, Hero, LogoOrb, MOODS, MoodFace, Notice, Pill, Skeleton, TopBar } from '@/components/t4h/kit'
 import { avg, longDay, weekday } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { useDesktop } from '@/lib/useMedia'
 
 type Mood = Checkin['mood']
 
@@ -46,10 +47,12 @@ export default function CheckinPage() {
   const last7 = history.slice(-7)
   const average = avg(last7.map((c) => c.mood))
 
+  const desktop = useDesktop()
   return (
     <div className="relative min-h-svh overflow-hidden">
       <Hero tone="peach" variant="flower" />
-      <div className="relative z-10 flex flex-col gap-3.5 px-5 pb-6 pt-6">
+      <div className="relative z-10 flex flex-col gap-3.5 px-5 pb-6 pt-6 lg:mx-auto lg:grid lg:max-w-[1216px] lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-5 lg:px-6">
+        <div className="lg:col-span-2">
         <TopBar
           center={
             <Pill>
@@ -57,9 +60,11 @@ export default function CheckinPage() {
             </Pill>
           }
         />
-        <Headline eyebrow="Daily check-in" title="How are you feeling?" className="mt-3 mb-2" />
+        </div>
+        <Headline eyebrow="Daily check-in" title="How are you feeling?" className="mb-2 mt-3 lg:col-span-2 lg:mb-4 lg:mt-5" />
 
-        <Card className="px-3 py-4">
+        <div className="flex flex-col gap-3.5 lg:col-start-1">
+        <Card className="px-3 py-4 lg:px-8 lg:py-7">
           <div role="radiogroup" aria-label="Mood" className="flex items-end justify-between">
             {MOODS.map((m) => {
               const on = mood === m.v
@@ -74,7 +79,7 @@ export default function CheckinPage() {
                   className="flex flex-1 flex-col items-center gap-1.5"
                 >
                   <span className={cn('rounded-full p-0.5 transition', on ? 'ring-2 ring-ink' : 'opacity-80 hover:opacity-100')}>
-                    <MoodFace v={m.v} size={on ? 56 : 44} />
+                    <MoodFace v={m.v} size={desktop ? (on ? 84 : 68) : on ? 56 : 44} />
                   </span>
                   <span className={cn('text-[12px]', on ? 'font-medium text-ink' : 'text-sub')}>{m.label}</span>
                 </button>
@@ -111,8 +116,9 @@ export default function CheckinPage() {
             </p>
           </div>
         )}
+        </div>
 
-        <Card>
+        <Card className="lg:col-start-2 lg:row-start-3">
           <div className="flex items-baseline justify-between">
             <p className="text-[16px]">Last 7 check-ins</p>
             <p>
@@ -137,6 +143,7 @@ export default function CheckinPage() {
               ))}
             </div>
           )}
+          <p className="mt-4 hidden text-[12.5px] text-sub lg:block">Your check-ins are shared with your specialist before each session.</p>
         </Card>
       </div>
     </div>

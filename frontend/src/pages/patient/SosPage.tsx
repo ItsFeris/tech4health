@@ -24,9 +24,12 @@ export default function SosPage() {
   }
 
   return (
-    <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden">
-      <Hero tone="peach" variant="flower" height={520} />
-      <div className="relative z-10 flex flex-1 flex-col px-5 pb-7 pt-6">
+    // Desktop (design D07): the same content as a centered card over a soft backdrop.
+    <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden lg:max-w-none lg:justify-center lg:bg-[linear-gradient(140deg,#F9E4BB_0%,#FBD7C8_55%,#F6CDDB_100%)]">
+      <div className="lg:hidden">
+        <Hero tone="peach" variant="flower" height={520} />
+      </div>
+      <div className="relative z-10 flex flex-1 flex-col px-5 pb-7 pt-6 lg:mx-auto lg:w-[480px] lg:flex-none lg:rounded-[34px] lg:bg-white/95 lg:p-8 lg:shadow-[0_30px_80px_rgba(40,30,70,.22)]">
         <div className="flex items-center justify-between">
           <GlassCircle aria-label="Close" onClick={() => navigate(-1)}>
             <X className="size-5" />
@@ -37,7 +40,7 @@ export default function SosPage() {
           <span className="w-[52px]" />
         </div>
 
-        <span className="mx-auto mt-24 flex size-[124px] items-center justify-center rounded-full bg-white/60 p-3">
+        <span className="mx-auto mt-24 flex size-[124px] lg:mt-2 items-center justify-center rounded-full bg-white/60 p-3">
           <span className="flex size-full items-center justify-center rounded-full bg-white shadow-[var(--shadow-card)]">
             <Heart className="size-8 text-sos" fill="currentColor" />
           </span>

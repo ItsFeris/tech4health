@@ -73,9 +73,9 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-svh bg-[#EDEBF2]">
-      <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden bg-background">
+      <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden bg-background lg:max-w-none">
         <Hero tone={step === 0 ? 'lavender' : 'teal'} variant="petals" />
-        <div className="relative z-10 flex flex-1 flex-col px-5 pb-7 pt-6">
+        <div className="relative z-10 flex flex-1 flex-col px-5 pb-7 pt-6 lg:mx-auto lg:w-full lg:max-w-[560px] lg:px-6">
           <div className="flex items-center justify-between">
             <GlassCircle aria-label={step === 0 ? 'Log out' : 'Back'} onClick={() => (step === 0 ? void logout() : setStep(0))}>
               <ArrowLeft className="size-5" />

@@ -59,7 +59,8 @@ export default function HomeworkPage() {
   return (
     <div className="relative min-h-svh overflow-hidden">
       <Hero tone="lavender" />
-      <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 pt-6">
+      <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 pt-6 lg:mx-auto lg:grid lg:max-w-[1216px] lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5 lg:px-6">
+        <div className="lg:col-span-2">
         <TopBar
           center={
             <Pill>
@@ -67,8 +68,10 @@ export default function HomeworkPage() {
             </Pill>
           }
         />
-        <Headline eyebrow="This week's homework" title="Small steps" className="mt-3" />
+        </div>
+        <Headline eyebrow="This week's homework" title="Small steps" className="mt-3 lg:col-span-2 lg:mt-5" />
 
+        <div className="flex flex-col gap-4 lg:col-start-1">
         {loading ? (
           <div className="flex flex-col gap-3">
             <Skeleton className="mx-auto h-[38px] w-56 rounded-full" />
@@ -117,7 +120,7 @@ export default function HomeworkPage() {
               ))}
             </div>
             {error && <Notice tone="error">{error}</Notice>}
-            <ul className="flex flex-col gap-3">
+            <ul className="flex flex-col gap-3 lg:grid lg:grid-cols-2">
               {visible.map((h) => {
                 const t = CARD_TONES[items.indexOf(h) % CARD_TONES.length]
                 return (
@@ -148,10 +151,11 @@ export default function HomeworkPage() {
             </ul>
           </>
         )}
+        </div>
 
         {/* The specialist's words after the last session (session note takeaways). */}
         {note && (
-          <figure className="rounded-[26px] bg-white p-5 shadow-[var(--shadow-soft)]">
+          <figure className="rounded-[26px] bg-white p-5 shadow-[var(--shadow-soft)] lg:col-start-2 lg:row-start-3">
             <figcaption className="flex items-center gap-3">
               {specialist && <SpecialistPhoto id={specialist.id} photoUrl={specialist.photo_url} name={specialist.nickname} size={44} />}
               <span>

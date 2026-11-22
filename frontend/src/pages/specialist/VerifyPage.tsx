@@ -84,9 +84,9 @@ export default function VerifyPage() {
 
   return (
     <div className="min-h-svh bg-[#EDEBF2]">
-      <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden bg-background">
+      <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden bg-background lg:max-w-none">
         <Hero tone={stage === 'done' ? 'mint' : stage === 'review' ? 'lavender' : 'teal'} variant="petals" />
-        <div className="relative z-10 flex flex-1 flex-col px-5 pb-7 pt-6">
+        <div className="relative z-10 flex flex-1 flex-col px-5 pb-7 pt-6 lg:mx-auto lg:w-full lg:max-w-[560px] lg:px-6">
           <div className="flex items-center justify-between">
             {stage === 'done' ? (
               <span className="w-[52px]" />
@@ -204,7 +204,7 @@ function ScanScreen(props: {
 
   return (
     <div className="min-h-svh bg-[#0E0E11]">
-      <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden bg-[radial-gradient(120%_80%_at_80%_100%,#3A3346_0%,#151518_55%,#0E0E11_100%)] text-white">
+      <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden bg-[radial-gradient(120%_80%_at_80%_100%,#3A3346_0%,#151518_55%,#0E0E11_100%)] text-white lg:max-w-[720px]">
         <div className="flex items-center justify-between px-5 pt-6">
           <button type="button" aria-label="Close" onClick={props.onClose} className="flex size-[52px] items-center justify-center rounded-full border border-white/25 bg-white/10">
             <X className="size-5" />

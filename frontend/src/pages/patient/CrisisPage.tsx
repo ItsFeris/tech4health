@@ -47,11 +47,11 @@ export default function CrisisPage() {
   }
 
   return (
-    <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden" style={{ background: 'linear-gradient(180deg, #BFE3EA 0%, #DCEEF2 38%, #E6E1F7 78%, #F3E3EE 100%)' }}>
+    <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden lg:max-w-none" style={{ background: 'linear-gradient(180deg, #BFE3EA 0%, #DCEEF2 38%, #E6E1F7 78%, #F3E3EE 100%)' }}>
       <div aria-hidden="true" className="absolute -left-24 -top-20 size-[280px] rounded-full border border-white/60 bg-white/20" />
       <div aria-hidden="true" className="absolute -bottom-10 -right-24 size-[300px] rounded-[100%_0_100%_0] border border-white/60 bg-white/20" />
 
-      <div className="relative z-10 flex flex-1 flex-col px-5 pb-7 pt-6">
+      <div className="relative z-10 flex flex-1 flex-col px-5 pb-7 pt-6 lg:mx-auto lg:w-full lg:max-w-[1080px] lg:pb-12">
         <div className="flex items-center justify-between">
           <GlassCircle aria-label="Back to Nour" onClick={() => navigate('/patient')}>
             <ArrowLeft className="size-5" />
@@ -78,16 +78,16 @@ export default function CrisisPage() {
           {breathing ? PHASES[phase].label : 'Breathe with me'}
         </button>
 
-        <h1 dir="auto" className="headline mt-14 text-center text-[42px]">
+        <h1 dir="auto" className="headline mt-14 text-center text-[42px] lg:text-[64px]">
           {crisis.title}
         </h1>
         <p dir="auto" className="mt-3 text-center text-[16px] leading-relaxed text-ink-2">
           {crisis.body}
         </p>
 
-        <div className="mt-auto flex flex-col gap-3 pt-8">
+        <div className="mt-auto flex flex-col gap-3 pt-8 lg:grid lg:grid-cols-3">
           {sosError && (
-            <Notice tone="error">
+            <Notice tone="error" className="lg:col-span-3">
               The alert could not be sent. Call <strong>{EMERGENCY_NUMBER}</strong> now, or try again.
             </Notice>
           )}
