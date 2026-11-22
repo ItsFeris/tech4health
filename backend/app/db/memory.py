@@ -156,6 +156,17 @@ async def create_specialist_profile(user_id: str, body: SpecialistOnboardingBody
     return _me(user_id)
 
 
+async def set_patient_specialist(patient_id: str, specialist_id: Optional[str]) -> Me:
+    """Change or leave (None) the specialist. Upcoming sessions with the previous one are cancelled."""
+    old = patient_profiles[patient_id]["specialist_id"]
+    if old and old != specialist_id:
+        for a in appointments.values():
+            if a["patient_id"] == patient_id and a["specialist_id"] == old and a["status"] == "scheduled" and a["starts_at"] >= now_iso():
+                a["status"] = "cancelled"
+    patient_profiles[patient_id]["specialist_id"] = specialist_id
+    return _me(patient_id)
+
+
 async def update_consent(patient_id: str, consent: str) -> Me:
     patient_profiles[patient_id]["consent"] = consent
     return _me(patient_id)

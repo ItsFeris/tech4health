@@ -1,13 +1,14 @@
 // Settings (design: 9 · Settings).
 import { useEffect, useState } from 'react'
 import { LogOut, Phone, Settings } from 'lucide-react'
-import { getAppointments, getSpecialist, updateConsent } from '@/api'
+import { getAppointments, getSpecialist, setMySpecialist, updateConsent } from '@/api'
 import { useAuth } from '@/auth/AuthContext'
 import type { Appointment, Consent, Lang, SpecialistCard } from '@/types/contract'
 import { Card, Headline, Hero, Notice, Pill, SectionLabel, Skeleton, TopBar } from '@/components/t4h/kit'
 import { dayLabel, timeLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { SpecialistPhoto, VerifiedBadge, lookOf } from '@/components/t4h/specialist'
+import { SpecialistPhoto, VerifiedBadge, lookOf, shortName } from '@/components/t4h/specialist'
+import { useNavigate } from 'react-router-dom'
 
 const LANGS: { id: Lang; label: string }[] = [
   { id: 'darija', label: 'Tounsi' },
@@ -18,12 +19,31 @@ const LANGS: { id: Lang; label: string }[] = [
 
 export default function SettingsPage() {
   const { me, refresh, logout } = useAuth()
+  const navigate = useNavigate()
   const [consent, setConsent] = useState<Consent>(me?.consent ?? 'summary_only')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [appointments, setAppointments] = useState<Appointment[] | null>(null)
   const [apptError, setApptError] = useState(false)
   const [specialist, setSpecialist] = useState<SpecialistCard | null>(null)
+  const [leaving, setLeaving] = useState(false)
+  const [leaveBusy, setLeaveBusy] = useState(false)
+  const [leaveError, setLeaveError] = useState<string | null>(null)
+
+  /** Leave the current specialist: the layout then sends the patient to choose a new one. */
+  async function leave() {
+    if (!specialist) return
+    setLeaveBusy(true)
+    setLeaveError(null)
+    try {
+      await setMySpecialist(null)
+      navigate('/patient/choose-specialist', { replace: true, state: { left: specialist.id } })
+      await refresh()
+    } catch {
+      setLeaveError("That didn't work. You still have your specialist, try again.")
+      setLeaveBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (me?.specialist_id) getSpecialist(me.specialist_id).then(setSpecialist).catch(() => setSpecialist(null))
@@ -144,6 +164,31 @@ export default function SettingsPage() {
                   <p className="mt-3 text-[30px] leading-none tracking-[-1px]">{timeLabel(a.starts_at)}</p>
                 </div>
               ))}
+            </div>
+          )}
+
+          {specialist && !leaving && (
+            <button type="button" onClick={() => setLeaving(true)} className="mt-4 h-10 rounded-full border border-line bg-white px-4 text-[13.5px] text-ink transition hover:bg-soft">
+              Change or leave specialist
+            </button>
+          )}
+          {specialist && leaving && (
+            <div role="alertdialog" aria-labelledby="leave-title" className="mt-4 rounded-[20px] bg-[linear-gradient(140deg,#F9E4BB_0%,#FBD7C8_100%)] p-4">
+              <p id="leave-title" className="text-[15px] font-medium">
+                Leave {shortName(specialist.nickname)}?
+              </p>
+              <p className="mt-1 text-[13px] text-ink-2">
+                They won&apos;t see your check-ins or summaries anymore, and your upcoming sessions with them are cancelled. You&apos;ll choose a new specialist right after.
+              </p>
+              {leaveError && <p className="mt-2 text-[13px] text-sos">{leaveError}</p>}
+              <div className="mt-3 flex gap-2">
+                <button type="button" disabled={leaveBusy} onClick={() => void leave()} className="h-10 rounded-full bg-ink px-4 text-[13.5px] text-white disabled:opacity-60">
+                  {leaveBusy ? 'Leaving…' : 'Leave specialist'}
+                </button>
+                <button type="button" disabled={leaveBusy} onClick={() => setLeaving(false)} className="h-10 rounded-full bg-white px-4 text-[13.5px]">
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
         </Card>

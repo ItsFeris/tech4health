@@ -1,7 +1,7 @@
 /** Patient shell. Phone: column + floating bottom navigation, each screen draws its own top bar.
  * Desktop (>= 1024 px, design D01–D08): top header with pill navigation, SOS and avatar over the page's Hero. Dhia owns this file. */
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { ClipboardCheck, Heart, MessageSquare, Smile, UserRound } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getHomework } from '@/api'
@@ -27,6 +27,9 @@ export function PatientLayout() {
       .then((h) => setTodo(h.filter((x) => !x.done).length))
       .catch(() => {})
   }, [pathname])
+
+  // No specialist (left one, or none assigned): choose one first. SOS and the crisis screen stay reachable.
+  if (me && me.role === 'patient' && !me.specialist_id) return <Navigate to="/patient/choose-specialist" replace />
 
   return (
     <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col bg-background lg:max-w-none">

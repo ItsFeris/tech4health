@@ -43,3 +43,13 @@ export function updateConsent(consent: Consent): Promise<Me> {
   }
   return request<Me>('PATCH', '/me/consent', { consent })
 }
+
+/** PATCH /me/specialist (v1.5) — choose a new verified specialist, or null to leave the current one.
+ * Leaving cancels upcoming sessions with them; the app then asks the patient to choose again. */
+export function setMySpecialist(specialistId: string | null): Promise<Me> {
+  if (USE_MOCKS) {
+    mePatient.specialist_id = specialistId
+    return mock(mePatient)
+  }
+  return request<Me>('PATCH', '/me/specialist', { specialist_id: specialistId })
+}

@@ -1,6 +1,6 @@
 # Tech4Health — Locked design spec (team contract)
 
-Version 1.4 · frozen Nov 22, 2026 (1.1: team cut to 3 people · 1.2: Dhia builds all screens from the design · 1.3: AI tools, `ChatReply.actions` · 1.4: choose a specialist, specialist price & verification, session takeaways) · source doc: https://claude.ai/artifact/XyrztKDxje9S6nP8ZJWQbW
+Version 1.5 · frozen Nov 22, 2026 (1.1: team cut to 3 people · 1.2: Dhia builds all screens from the design · 1.3: AI tools, `ChatReply.actions` · 1.4: choose a specialist, specialist price & verification, session takeaways · 1.5: change or leave specialist) · source doc: https://claude.ai/artifact/XyrztKDxje9S6nP8ZJWQbW
 
 ## 1. Lock rules
 
@@ -256,6 +256,7 @@ The backend exposes 25 endpoints under `/api/v1`, all JSON and all behind the Su
 | POST | `/me/verify` | specialist | B | `id_card, license, selfie` (all true) | `SpecialistCard` (v1.4: checks are simulated in the app) |
 | GET | `/takeaways/latest` | patient | A | — | `Takeaways \| null` (v1.4: the specialist's note after the last session) |
 | PATCH | `/me/consent` | patient | A | `consent` | `Me` |
+| PATCH | `/me/specialist` | patient | A | `specialist_id` (a verified specialist, or `null` to leave) | `Me` (v1.5: upcoming sessions with the old specialist are cancelled; a patient with no specialist is sent to choose one) |
 | GET | `/appointments` | both | A, B | — | `Appointment[]` (own, upcoming first) |
 | POST | `/appointments` | specialist | B | `patient_id, starts_at, type` | `Appointment` |
 | PATCH | `/appointments/{id}` | both | A, B | `starts_at?, status?` | `Appointment` |
@@ -416,6 +417,7 @@ What `POST /chat` does, in order (Dhia):
 2. `db.save_message` stores the user's message.
 3. `risk.assess_message` scores it, and `risk.assess_trend` runs too; the higher level wins.
 4. `risk.escalate` acts on that level.
+4b. A patient with no specialist (v1.5): no alert is created, but a red message still returns the crisis payload and emails the emergency contact. `POST /sos` answers 409 `no_specialist` and the app opens the crisis screen.
 5. On red, `companion.reply` is skipped and the reply is a short fixed message plus the crisis payload. Otherwise `companion.reply` writes the answer.
    Since v1.3 `companion.reply` can call tools (`backend/app/ai/tools.py`): `log_mood`, `start_breathing_exercise`, `start_grounding_exercise`, `start_thought_record`, `get_homework`, `complete_homework`, `get_next_session`, `get_mood_history`. Each tool can add a `ChatAction` card. `log_mood` saves a check-in and re-runs the mood trend and escalation. With the AI off, a keyword fallback still opens the obvious card. On red, no tools run.
 6. `db.save_message` stores the AI reply, and the route returns a `ChatReply`.

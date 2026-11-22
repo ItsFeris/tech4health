@@ -228,6 +228,11 @@ class ConsentBody(BaseModel):
     consent: Consent
 
 
+class SpecialistChoiceBody(BaseModel):
+    """v1.5: PATCH /me/specialist. A verified specialist's id, or null to leave the current one."""
+    specialist_id: Optional[str] = None
+
+
 class NewAppointmentBody(BaseModel):
     patient_id: str
     starts_at: str

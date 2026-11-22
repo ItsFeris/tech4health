@@ -18,6 +18,7 @@ import QuestionnairePage from '@/pages/patient/QuestionnairePage'
 import SosPage from '@/pages/patient/SosPage'
 import CrisisPage from '@/pages/patient/CrisisPage'
 import SettingsPage from '@/pages/patient/SettingsPage'
+import ChooseSpecialistPage from '@/pages/patient/ChooseSpecialistPage'
 
 // B — specialist side
 import SpecialistOnboardingPage from '@/pages/specialist/OnboardingPage'
@@ -39,6 +40,7 @@ export default function App() {
           <Route element={<RequireRole role="patient" />}>
             <Route path="/patient/crisis" element={<CrisisPage />} />
             <Route path="/patient/sos" element={<SosPage />} />
+            <Route path="/patient/choose-specialist" element={<ChooseSpecialistPage />} />
             <Route path="/patient" element={<PatientLayout />}>
               <Route index element={<ChatPage />} />
               <Route path="checkin" element={<CheckinPage />} />

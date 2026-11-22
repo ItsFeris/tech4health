@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Heart, ShieldAlert, X } from 'lucide-react'
-import { sendSos } from '@/api'
+import { sendSos, ApiRequestError } from '@/api'
 import { Cta, GhostButton, GlassCircle, Headline, Hero, Notice, Pill } from '@/components/t4h/kit'
 
 export default function SosPage() {
@@ -16,8 +16,10 @@ export default function SosPage() {
     try {
       const r = await sendSos()
       navigate('/patient/crisis', { replace: true, state: { crisis: r.crisis, alerted: true } })
-    } catch {
-      setError(true)
+    } catch (e) {
+      // No specialist to alert: still go to the crisis screen (emergency number, breathing).
+      if (e instanceof ApiRequestError && e.code === 'no_specialist') navigate('/patient/crisis', { replace: true, state: { alerted: false } })
+      else setError(true)
     } finally {
       setSending(false)
     }

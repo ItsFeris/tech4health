@@ -115,6 +115,17 @@ async def create_specialist_profile(user_id: str, body: SpecialistOnboardingBody
     return await get_profile(user_id)  # type: ignore[return-value]
 
 
+async def set_patient_specialist(patient_id: str, specialist_id: Optional[str]) -> Me:
+    """Change or leave (None) the specialist. Upcoming sessions with the previous one are cancelled."""
+    pp = _first(sb().table("patient_profiles").select("specialist_id").eq("user_id", patient_id).limit(1).execute().data)
+    old = pp["specialist_id"] if pp else None
+    if old and old != specialist_id:
+        (sb().table("appointments").update({"status": "cancelled"})
+            .eq("patient_id", patient_id).eq("specialist_id", old).eq("status", "scheduled").gte("starts_at", now_iso()).execute())
+    sb().table("patient_profiles").update({"specialist_id": specialist_id}).eq("user_id", patient_id).execute()
+    return await get_profile(patient_id)  # type: ignore[return-value]
+
+
 async def update_consent(patient_id: str, consent: str) -> Me:
     sb().table("patient_profiles").update({"consent": consent}).eq("user_id", patient_id).execute()
     return await get_profile(patient_id)  # type: ignore[return-value]

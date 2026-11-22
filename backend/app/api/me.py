@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from app import db
 from app.auth import current_patient, current_user, current_user_id
 from app.errors import ApiError
-from app.models import ConsentBody, Me, PatientOnboardingBody, SpecialistOnboardingBody
+from app.models import ConsentBody, Me, PatientOnboardingBody, SpecialistChoiceBody, SpecialistOnboardingBody
 
 router = APIRouter(tags=["me"])
 
@@ -30,3 +30,12 @@ async def onboard_specialist(body: SpecialistOnboardingBody, user_id: str = Depe
 @router.patch("/me/consent", response_model=Me)
 async def update_consent(body: ConsentBody, me: Me = Depends(current_patient)):
     return await db.update_consent(me.id, body.consent)
+
+
+@router.patch("/me/specialist", response_model=Me)
+async def choose_specialist(body: SpecialistChoiceBody, me: Me = Depends(current_patient)):
+    """v1.5: choose a (new) verified specialist, or leave the current one with null.
+    The old specialist loses access and upcoming sessions with them are cancelled."""
+    if body.specialist_id is not None and body.specialist_id not in {c.id for c in await db.list_specialists()}:
+        raise ApiError(422, "validation_error", "This specialist is not available")
+    return await db.set_patient_specialist(me.id, body.specialist_id)

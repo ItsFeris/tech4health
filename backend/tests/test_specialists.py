@@ -50,3 +50,27 @@ def test_takeaways():
     t = c.get("/api/v1/takeaways/latest", headers=P).json()
     assert t and t["takeaways"] and t["session_date"]
     assert c.get("/api/v1/takeaways/latest", headers=S).status_code == 403
+
+
+def test_leave_and_choose_specialist(monkeypatch):
+    pid = "00000000-0000-4000-8000-00000000cccc"
+    monkeypatch.setitem(db.DEMO_TOKENS, "leaver", pid)
+    H = {"Authorization": "Bearer leaver"}
+    c.post("/api/v1/onboarding/patient", json={"nickname": "Lina", "language": "fr", "consent": "summary_only"}, headers=H)
+    appt = db.memory.appointments
+    aid = "appt-leaver"
+    appt[aid] = {"id": aid, "patient_id": pid, "specialist_id": db.SPECIALIST_ID, "starts_at": "2999-01-01T10:00:00Z", "type": "weekly", "status": "scheduled"}
+
+    me = c.patch("/api/v1/me/specialist", json={"specialist_id": None}, headers=H).json()
+    assert me["specialist_id"] is None and appt[aid]["status"] == "cancelled"
+    assert pid not in [r["patient_id"] for r in c.get("/api/v1/patients", headers=S).json()]
+
+    # no specialist + crisis message: still the crisis screen, no alert
+    r = c.post("/api/v1/chat", json={"content": "I want to die"}, headers=H).json()
+    assert r["risk"]["level"] == "red" and r["crisis"] is not None
+    assert c.post("/api/v1/sos", headers=H).status_code == 409
+
+    assert c.patch("/api/v1/me/specialist", json={"specialist_id": "nope"}, headers=H).status_code == 422
+    omar = "00000000-0000-4000-8000-000000000004"
+    assert c.patch("/api/v1/me/specialist", json={"specialist_id": omar}, headers=H).json()["specialist_id"] == omar
+    assert c.patch("/api/v1/me/specialist", json={"specialist_id": None}, headers=S).status_code == 403

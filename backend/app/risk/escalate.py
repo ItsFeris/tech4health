@@ -14,7 +14,13 @@ def crisis_payload(lang: str) -> Crisis:
 
 
 async def escalate(ctx: PatientContext, result: RiskResult, message_id: Optional[str]) -> EscalationOutcome:
-    if result.level == "green" or not ctx.specialist_id:
+    if result.level == "green":
+        return EscalationOutcome()
+    if not ctx.specialist_id:
+        # No specialist (never chose one, or left): nobody to alert, but a crisis still gets the crisis screen.
+        if result.level == "red":
+            await email.alert_emergency_contact(ctx)
+            return EscalationOutcome(crisis=crisis_payload(ctx.language))
         return EscalationOutcome()
     alert = await db.create_alert(ctx.patient_id, result, message_id)
     if result.level == "orange":
