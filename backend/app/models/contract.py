@@ -82,12 +82,26 @@ class Crisis(BaseModel):
     actions: list[CrisisAction]
 
 
+class ChatAction(BaseModel):
+    """Something Nour did with a tool, shown as a card under its reply (CONTRACT v1.3)."""
+
+    type: Literal["breathing", "grounding", "thought_record", "mood_logged", "homework_list", "homework_done", "next_session", "mood_history"]
+    pattern: Optional[Literal["box", "478", "slow"]] = None  # breathing
+    cycles: Optional[int] = None  # breathing
+    situation: Optional[str] = None  # thought_record: what the patient described
+    checkin: Optional[Checkin] = None  # mood_logged
+    homework: list[Homework] = []  # homework_list / homework_done
+    appointment: Optional[Appointment] = None  # next_session (null = none booked)
+    moods: list[Checkin] = []  # mood_history
+
+
 class ChatReply(BaseModel):
     user_message: Message
     ai_message: Message
     risk: RiskResult
     crisis: Optional[Crisis] = None
     urgent_appointment: Optional[Appointment] = None
+    actions: list[ChatAction] = []
 
 
 class CheckinReply(BaseModel):

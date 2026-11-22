@@ -1,11 +1,12 @@
 // Patient home: chat with Nour (design: 3 · Chat, plus loading, offline/error and Arabic RTL states).
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle, ArrowRight, CalendarDays, WifiOff, X } from 'lucide-react'
 import { getAppointments, getChatHistory, getHomework, sendChat } from '@/api'
 import { useAuth } from '@/auth/AuthContext'
-import type { Appointment, Homework, Lang, Message } from '@/types/contract'
+import type { Appointment, ChatAction, Homework, Lang, Message } from '@/types/contract'
 import { Headline, Hero, LogoOrb, Notice, Pill, Skeleton, SmallButton, TopBar, TypingDots } from '@/components/t4h/kit'
+import { ActionCard } from '@/components/t4h/actions'
 import { dayLabel, greeting, partOfDay, timeLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -44,6 +45,7 @@ export default function ChatPage() {
   const [pending, setPending] = useState<Pending | null>(null)
   const [input, setInput] = useState('')
   const [urgent, setUrgent] = useState<Appointment | null>(null)
+  const [cards, setCards] = useState<Record<string, ChatAction[]>>({}) // Nour's tool cards, by AI message id
 
   async function load() {
     setLoading(true)
@@ -77,6 +79,7 @@ export default function ChatPage() {
       const reply = await sendChat(content)
       setPending(null)
       setMessages((prev) => [...prev, reply.user_message, reply.ai_message])
+      if (reply.actions?.length) setCards((prev) => ({ ...prev, [reply.ai_message.id]: reply.actions }))
       if (reply.urgent_appointment) {
         setUrgent(reply.urgent_appointment)
         setAppointments((prev) => [...prev.filter((a) => a.id !== reply.urgent_appointment!.id), reply.urgent_appointment!])
@@ -185,7 +188,10 @@ export default function ChatPage() {
             <>
               {messages.length === 0 && <Bubble sender="ai" text={WELCOME[lang]} />}
               {messages.map((m) => (
-                <Bubble key={m.id} sender={m.sender} text={m.content} />
+                <Fragment key={m.id}>
+                  <Bubble sender={m.sender} text={m.content} />
+                  {cards[m.id]?.map((a, i) => <ActionCard key={i} action={a} onSend={(t) => void send(t)} />)}
+                </Fragment>
               ))}
               {pending && (
                 <div className="flex flex-col items-end gap-1.5">

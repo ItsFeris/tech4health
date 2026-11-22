@@ -266,6 +266,7 @@ async function sendChat() {
       el('div', { class: 'layers' }, 'Keywords ', lvl(r.risk.rules), ' AI check ', lvl(r.risk.llm), ' Trend ', lvl(r.risk.trend), ' → Final ', lvl(r.risk.final)),
       el('div', {}, 'Why: ' + r.risk.final.reason),
       el('div', {}, 'App would: ' + r.would_do),
+      (r.tool_calls || []).length ? el('div', {}, 'Tools: ' + r.tool_calls.map(c => `${c.name}(${JSON.stringify(c.args)})${c.result && c.result.ok === false ? ' ✗ ' + c.result.error : ''}`).join(' · ')) : null,
       el('div', {}, `Time: ${r.timing_ms.total} ms (AI risk check ${r.timing_ms.risk_ai_check} ms, reply ${r.timing_ms.reply} ms)`),
       r.ai_error ? el('div', { class: 'error' }, 'AI error: ' + r.ai_error) : null)
     const m = bubble('ai', r.reply, meta); if (r.risk.final.level === 'red') m.classList.add('red')

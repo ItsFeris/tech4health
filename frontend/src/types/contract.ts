@@ -77,6 +77,21 @@ export interface ChatReply {
   risk: RiskResult
   crisis: Crisis | null
   urgent_appointment: Appointment | null
+  /** v1.3: cards opened by Nour's tools (exercise, mood logged...). Shown under the AI message. */
+  actions: ChatAction[]
+}
+
+export type ChatActionType = 'breathing' | 'grounding' | 'thought_record' | 'mood_logged' | 'homework_list' | 'homework_done' | 'next_session' | 'mood_history'
+
+export interface ChatAction {
+  type: ChatActionType
+  pattern?: 'box' | '478' | 'slow' | null
+  cycles?: number | null
+  situation?: string | null
+  checkin?: Checkin | null
+  homework?: Homework[]
+  appointment?: Appointment | null
+  moods?: Checkin[]
 }
 
 export interface CheckinReply {

@@ -67,3 +67,52 @@ async def chat_json(messages: list[dict], max_tokens: int = 400) -> Optional[dic
         return json.loads(text)
     except json.JSONDecodeError:
         return None
+
+
+async def chat_with_tools(messages: list[dict], tools: list[dict], run_tool, max_rounds: int = 3, max_tokens: int = 500) -> Optional[str]:
+    """
+    Tool-calling loop: the model may call tools, we run them with run_tool(name, args) and send back the results,
+    until it answers in plain text. Returns None if the AI is off or fails (caller falls back).
+    If the model or API rejects tools, retries once as a plain chat so the user still gets an answer.
+    """
+    global last_error
+    if not enabled():
+        return None
+    from app.ai.tools import parse_args
+
+    extra: dict = {}
+    if _is_reasoning_model():
+        extra = {"reasoning_effort": "low", "include_reasoning": False}
+        max_tokens = max_tokens * 3
+    convo = list(messages)
+    for _ in range(max_rounds):
+        try:
+            res = await _groq().chat.completions.create(
+                model=settings.groq_chat_model,
+                messages=convo,
+                tools=tools,
+                tool_choice="auto",
+                max_tokens=max_tokens,
+                temperature=0.6,
+                timeout=30,
+                extra_body=extra or None,
+            )
+        except Exception as e:
+            last_error = f"{type(e).__name__}: {e}"[:300]
+            log.warning("Groq tool call failed, retrying without tools: %s", last_error)
+            return await chat_completion(messages)
+        msg = res.choices[0].message
+        calls = getattr(msg, "tool_calls", None) or []
+        if not calls:
+            last_error = None if msg.content else "empty answer from the model"
+            return msg.content or None
+        convo.append({
+            "role": "assistant",
+            "content": msg.content or "",
+            "tool_calls": [{"id": c.id, "type": "function", "function": {"name": c.function.name, "arguments": c.function.arguments or "{}"}} for c in calls],
+        })
+        for c in calls:
+            result = await run_tool(c.function.name, parse_args(c.function.arguments))
+            convo.append({"role": "tool", "tool_call_id": c.id, "content": json.dumps(result, ensure_ascii=False)})
+    # too many rounds: ask for a final answer without tools
+    return await chat_completion(convo + [{"role": "system", "content": "Answer the user now in 1 to 3 short sentences, without calling tools."}])

@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from app import db
 from app.ai import companion, llm, prompts
+from app.ai.tools import ToolRun
 from app.ai.summary import summarize
 from app.config import settings
 from app.models import Checkin, Homework, Lang, Message, PatientContext, RiskResult, WeekData
@@ -95,9 +96,12 @@ async def try_chat(body: ChatTry):
     final = engine.highest(rules, ai_check, trend)
     crisis = crisis_payload(ctx.language) if final.level == "red" else None
     t_reply = time.perf_counter()
-    reply = crisis.body if crisis else await companion.reply(ctx, body.text, final)
+    run = ToolRun(ctx=ctx, dry_run=True)  # tools run for real reads, but nothing is saved
+    reply = crisis.body if crisis else await companion.reply(ctx, body.text, final, tools=run)
     return {
         "reply": reply,
+        "actions": run.actions,
+        "tool_calls": run.calls,
         "risk": {"rules": rules, "llm": ai_check, "trend": trend, "final": final},
         "would_do": WOULD_DO[final.level],
         "crisis": crisis,

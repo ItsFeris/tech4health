@@ -1,8 +1,11 @@
 """The AI companion's replies. Dhia only (B tunes the wording in prompts/companion.md)."""
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from app.models import PatientContext, RiskResult
+
+if TYPE_CHECKING:
+    from app.ai.tools import ToolRun
 
 from . import llm
 from .anonymize import anonymize
@@ -26,14 +29,33 @@ def _history(ctx: PatientContext) -> list[dict]:
     return [{"role": "user" if m.sender == "user" else "assistant", "content": anonymize(m.content, names)} for m in ctx.recent_messages[-12:]]
 
 
-async def reply(ctx: PatientContext, user_text: str, risk: RiskResult) -> str:
+TOOL_FALLBACK = {
+    "breathing": {"darija": "Ta3ala netneffsou m3a b3adhna. Tba3 el dayra.", "ar": "تعال نتنفس معاً. اتبع الدائرة.", "fr": "On respire ensemble. Suis le cercle.", "en": "Let's breathe together. Follow the circle."},
+    "grounding": {"darija": "Ta3ala nraj3ou lel lahdha hedhi, 5-4-3-2-1.", "ar": "لنعد إلى اللحظة الحالية: ٥-٤-٣-٢-١.", "fr": "Revenons ici et maintenant : 5-4-3-2-1.", "en": "Let's come back to the here and now: 5-4-3-2-1."},
+}
+
+
+async def reply(ctx: PatientContext, user_text: str, risk: RiskResult, tools: Optional["ToolRun"] = None) -> str:
+    """Nour's answer. With `tools`, the model may call tools (exercises, mood log...) and the cards land in tools.actions."""
+    from app.ai import tools as T
+
     msgs = [{"role": "system", "content": _system(ctx)}, *_history(ctx)]
     if not msgs[-1:] or msgs[-1]["content"] != anonymize(user_text, [ctx.nickname]):
         msgs.append({"role": "user", "content": anonymize(user_text, [ctx.nickname])})
     if risk.level == "orange":
         msgs.append({"role": "system", "content": "The user seems very distressed. Be extra gentle and mention that their specialist will see them sooner."})
-    text = await llm.chat_completion(msgs)
-    return text.strip() if text else FALLBACK.get(ctx.language, FALLBACK["en"])[len(user_text) % 2]
+
+    if tools is None:
+        text = await llm.chat_completion(msgs)
+    else:
+        text = await llm.chat_with_tools(msgs, T.SPECS, lambda name, args: T.execute(name, args, tools))
+        if text is None and not tools.actions:  # AI off or failed: obvious requests still open the right card
+            await T.run_intents(user_text, tools)
+    if text:
+        return text.strip()
+    if tools and tools.actions and tools.actions[0].type in TOOL_FALLBACK:
+        return TOOL_FALLBACK[tools.actions[0].type].get(ctx.language, TOOL_FALLBACK[tools.actions[0].type]["en"])
+    return FALLBACK.get(ctx.language, FALLBACK["en"])[len(user_text) % 2]
 
 
 async def checkin_reply(ctx: PatientContext, mood: int, note: Optional[str]) -> str:

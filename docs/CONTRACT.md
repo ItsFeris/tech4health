@@ -1,6 +1,6 @@
 # Tech4Health — Locked design spec (team contract)
 
-Version 1.2 · frozen Nov 22, 2026 (1.1: team cut to 3 people · 1.2: Dhia builds all screens from the design) · source doc: https://claude.ai/artifact/XyrztKDxje9S6nP8ZJWQbW
+Version 1.3 · frozen Nov 22, 2026 (1.1: team cut to 3 people · 1.2: Dhia builds all screens from the design · 1.3: AI tools, `ChatReply.actions`) · source doc: https://claude.ai/artifact/XyrztKDxje9S6nP8ZJWQbW
 
 ## 1. Lock rules
 
@@ -296,7 +296,17 @@ interface RiskResult { level: Risk; source: RiskSource; reason: string; }
 interface Crisis { title: string; body: string; actions: { label: string; kind: 'call' | 'sos' | 'breathing' }[]; }
 
 interface ChatReply { user_message: Message; ai_message: Message; risk: RiskResult;
-  crisis: Crisis | null; urgent_appointment: Appointment | null; }
+  crisis: Crisis | null; urgent_appointment: Appointment | null;
+  actions: ChatAction[]; }   // v1.3: cards opened by Nour's tools, shown under ai_message ([] if none)
+interface ChatAction {      // v1.3
+  type: 'breathing' | 'grounding' | 'thought_record' | 'mood_logged' | 'homework_list' | 'homework_done' | 'next_session' | 'mood_history';
+  pattern?: 'box' | '478' | 'slow' | null; cycles?: number | null;   // breathing
+  situation?: string | null;                                         // thought_record
+  checkin?: Checkin | null;                                          // mood_logged
+  homework?: Homework[];                                             // homework_list, homework_done
+  appointment?: Appointment | null;                                  // next_session (null = none booked)
+  moods?: Checkin[];                                                 // mood_history
+}
 
 interface CheckinReply { checkin: Checkin; ai_reply: string; risk: RiskResult; crisis: Crisis | null; }
 
@@ -385,6 +395,7 @@ What `POST /chat` does, in order (Dhia):
 3. `risk.assess_message` scores it, and `risk.assess_trend` runs too; the higher level wins.
 4. `risk.escalate` acts on that level.
 5. On red, `companion.reply` is skipped and the reply is a short fixed message plus the crisis payload. Otherwise `companion.reply` writes the answer.
+   Since v1.3 `companion.reply` can call tools (`backend/app/ai/tools.py`): `log_mood`, `start_breathing_exercise`, `start_grounding_exercise`, `start_thought_record`, `get_homework`, `complete_homework`, `get_next_session`, `get_mood_history`. Each tool can add a `ChatAction` card. `log_mood` saves a check-in and re-runs the mood trend and escalation. With the AI off, a keyword fallback still opens the obvious card. On red, no tools run.
 6. `db.save_message` stores the AI reply, and the route returns a `ChatReply`.
 
 `POST /checkins` and `POST /questionnaires` follow the same steps 1 to 6, with `assess_questionnaire` used for questionnaires.
