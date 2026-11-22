@@ -3,26 +3,36 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Bell, ChevronRight, RotateCcw, Search, Sparkles } from 'lucide-react'
 import { sendCheckin } from '@/api'
 import type { CheckinReply } from '@/types/contract'
-import { cn } from '@/lib/utils'
+
+
+const C = {
+  bg: '#F2EFE9',
+  dark: '#2C3A2C',
+  darkMid: '#3D4F3D',
+  sage: '#7A9A7A',
+  sageMid: '#B5C9B5',
+  sageLight: '#D8E5D8',
+  cream: '#FAF8F4',
+  muted: '#8A9A8A',
+}
+
+const moods = [
+  { label: 'Heureux', emoji: '😊', score: 5 as const },
+  { label: 'En colère', emoji: '😠', score: 2 as const },
+  { label: 'Excité', emoji: '🤩', score: 4 as const },
+  { label: 'Stressé', emoji: '😰', score: 2 as const },
+  { label: 'Triste', emoji: '😢', score: 1 as const },
+]
 
 export default function CheckinPage() {
   const navigate = useNavigate()
-
-  // Screen selection matching the 3 mockup phones: 'home' | 'meditation' | 'analytics'
   const [currentScreen, setCurrentScreen] = useState<'home' | 'meditation' | 'analytics'>('home')
-
-  // Screen 1: Home / Check-in State
-  const [selectedMood, setSelectedMood] = useState<string | null>('Happy')
+  const [selectedMood, setSelectedMood] = useState<string | null>(null)
   const [aiToast, setAiToast] = useState<string | null>(null)
-
-  // Screen 2: Meditation State
   const [isPlaying, setIsPlaying] = useState(false)
-  const [secondsLeft, setSecondsLeft] = useState(275) // 04:35 = 275s
-
-  // Screen 3: Analytics State
+  const [secondsLeft, setSecondsLeft] = useState(275)
   const [selectedDay, setSelectedDay] = useState(15)
 
-  // Timer effect for Meditation screen
   useEffect(() => {
     if (!isPlaying) return
     const interval = setInterval(() => {
@@ -37,591 +47,394 @@ export default function CheckinPage() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
-  // Handle Mood selection and trigger API
   async function handleSelectMood(label: string, score: 1 | 2 | 3 | 4 | 5) {
     setSelectedMood(label)
     try {
       const reply: CheckinReply = await sendCheckin(score, `Humeur sélectionnée : ${label}`)
       setAiToast(reply.ai_reply)
-      if (reply.crisis) {
-        navigate('/patient/crisis', { state: { crisis: reply.crisis } })
-      }
+      if (reply.crisis) navigate('/patient/crisis', { state: { crisis: reply.crisis } })
     } catch {
       // Ignore
     }
   }
 
+  const days = [11, 12, 13, 14, 15, 16, 17, 18]
+  const dayLabels = ['D', 'L', 'M', 'M', 'J', 'V', 'S', 'D']
+
   return (
-    <div className="mx-auto min-h-svh max-w-md bg-[#FAF9F5] text-[#242426] font-sans pb-28 selection:bg-teal-100">
-      
-      {/* Phone Screen Switcher Tabs (To toggle between the 3 mockup screens) */}
-      <div className="sticky top-0 z-20 flex items-center justify-center gap-1.5 bg-[#FAF9F5]/90 px-4 py-2.5 backdrop-blur-md border-b border-black/5">
-        <button
-          type="button"
-          onClick={() => setCurrentScreen('home')}
-          className={cn(
-            'rounded-full px-3 py-1 text-xs font-semibold transition-all',
-            currentScreen === 'home'
-              ? 'bg-[#1E1F24] text-white shadow-xs'
-              : 'text-[#6D6E73] hover:text-[#1E1F24] bg-black/5'
-          )}
-        >
-          1. Home Check-in
-        </button>
-        <button
-          type="button"
-          onClick={() => setCurrentScreen('meditation')}
-          className={cn(
-            'rounded-full px-3 py-1 text-xs font-semibold transition-all',
-            currentScreen === 'meditation'
-              ? 'bg-[#1E1F24] text-white shadow-xs'
-              : 'text-[#6D6E73] hover:text-[#1E1F24] bg-black/5'
-          )}
-        >
-          2. Méditation
-        </button>
-        <button
-          type="button"
-          onClick={() => setCurrentScreen('analytics')}
-          className={cn(
-            'rounded-full px-3 py-1 text-xs font-semibold transition-all',
-            currentScreen === 'analytics'
-              ? 'bg-[#1E1F24] text-white shadow-xs'
-              : 'text-[#6D6E73] hover:text-[#1E1F24] bg-black/5'
-          )}
-        >
-          3. Analytics
-        </button>
+    <div className="mx-auto min-h-svh max-w-md pb-28" style={{ backgroundColor: C.bg, fontFamily: 'sans-serif' }}>
+
+      {/* Screen tabs */}
+      <div
+        className="sticky top-0 z-20 flex items-center justify-center gap-1.5 px-4 py-2.5 backdrop-blur-md border-b"
+        style={{ backgroundColor: `${C.bg}E8`, borderColor: C.sageLight }}
+      >
+        {(['home', 'meditation', 'analytics'] as const).map((s, i) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setCurrentScreen(s)}
+            className="rounded-full px-3 py-1 text-xs font-semibold transition-all"
+            style={
+              currentScreen === s
+                ? { backgroundColor: C.dark, color: C.cream }
+                : { backgroundColor: C.sageLight, color: C.muted }
+            }
+          >
+            {i + 1}. {s === 'home' ? 'Check-in' : s === 'meditation' ? 'Méditation' : 'Analyse'}
+          </button>
+        ))}
       </div>
 
-      {/* ========================================================================= */}
-      {/* SCREEN 1: HOME (Exact match of left mockup) */}
-      {/* ========================================================================= */}
+      {/* ───────────── SCREEN 1: Home / Check-in ───────────── */}
       {currentScreen === 'home' && (
-        <div className="flex flex-col gap-6 p-5">
-          {/* Top Bar with Avatar, Greeting & Icons */}
-          <div className="flex items-center justify-between pt-1">
-            <div className="size-9 overflow-hidden rounded-full border border-black/10 bg-amber-100 p-0.5 shadow-xs">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-                alt="Avatar"
-                className="size-full rounded-full object-cover"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 text-center">
-              <span className="text-amber-500 text-sm">🌅</span>
-              <span className="text-xs font-medium text-[#4A4B4F]">Good Morning</span>
-            </div>
-
-            <div className="flex items-center gap-3 text-[#3E4044]">
-              <button type="button" aria-label="Search" className="hover:opacity-75">
-                <Search className="size-5" />
-              </button>
-              <button type="button" aria-label="Notifications" className="hover:opacity-75">
-                <Bell className="size-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Main Question */}
-          <div className="text-center pt-1">
-            <h1 className="font-serif text-[30px] font-normal tracking-tight text-[#1E1F24] leading-tight">
-              How have things <br /> been today?
-            </h1>
-          </div>
-
-          {/* Mood Pill Buttons (2 Rows exactly as in mockup) */}
-          <div className="flex flex-col items-center gap-2.5 pt-1">
-            {/* Row 1: Happy, Angry, Excited */}
-            <div className="flex items-center justify-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => void handleSelectMood('Happy', 5)}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium transition-all shadow-xs',
-                  selectedMood === 'Happy'
-                    ? 'bg-[#E3DCF7] text-[#473B7B] ring-2 ring-[#473B7B]/30 scale-105'
-                    : 'bg-[#EDE8F9] text-[#55478E] hover:bg-[#E3DCF7]'
-                )}
-              >
-                <span>😊</span>
-                <span>Happy</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => void handleSelectMood('Angry', 1)}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium transition-all shadow-xs',
-                  selectedMood === 'Angry'
-                    ? 'bg-[#FFD7CE] text-[#8C2E1B] ring-2 ring-[#8C2E1B]/30 scale-105'
-                    : 'bg-[#FFE5DF] text-[#A63722] hover:bg-[#FFD7CE]'
-                )}
-              >
-                <span>😡</span>
-                <span>Angry</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => void handleSelectMood('Excited', 5)}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium transition-all shadow-xs',
-                  selectedMood === 'Excited'
-                    ? 'bg-[#FFE2C2] text-[#8A5214] ring-2 ring-[#8A5214]/30 scale-105'
-                    : 'bg-[#FFECD9] text-[#9E5F18] hover:bg-[#FFE2C2]'
-                )}
-              >
-                <span>🤩</span>
-                <span>Excited</span>
-              </button>
-            </div>
-
-            {/* Row 2: Stressed, Sad */}
-            <div className="flex items-center justify-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => void handleSelectMood('Stressed', 2)}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium transition-all shadow-xs',
-                  selectedMood === 'Stressed'
-                    ? 'bg-[#BFE9F5] text-[#135C6E] ring-2 ring-[#135C6E]/30 scale-105'
-                    : 'bg-[#D3F1FA] text-[#1B6F84] hover:bg-[#BFE9F5]'
-                )}
-              >
-                <span>😰</span>
-                <span>Stressed</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => void handleSelectMood('Sad', 1)}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium transition-all shadow-xs',
-                  selectedMood === 'Sad'
-                    ? 'bg-[#FEECA7] text-[#785E00] ring-2 ring-[#785E00]/30 scale-105'
-                    : 'bg-[#FFF3C2] text-[#8A6C00] hover:bg-[#FEECA7]'
-                )}
-              >
-                <span>😢</span>
-                <span>Sad</span>
-              </button>
-            </div>
-          </div>
-
-          {/* AI Response Toast if clicked */}
-          {aiToast && (
-            <div className="rounded-2xl bg-white p-3.5 shadow-sm border border-emerald-100 text-xs text-[#2A2B2E] flex items-start gap-2.5 animate-in fade-in">
-              <Sparkles className="size-4 text-teal-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-semibold text-teal-900">Compagnon IA</p>
-                <p className="mt-0.5 text-muted-foreground">{aiToast}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Large Mint Banner Card ("Take charge of your mental well-being") */}
-          <div className="relative overflow-hidden rounded-[2.2rem] bg-gradient-to-r from-[#DDF2E7] via-[#D5EDE1] to-[#EAF5EF] p-6 shadow-xs border border-[#CDE5D8]">
-            <div className="flex items-start justify-between">
-              <div className="max-w-[190px] space-y-2 z-10">
-                <h3 className="font-sans text-[17px] font-bold text-[#193325] leading-snug">
-                  Take charge of your mental well-being
-                </h3>
-                <p className="text-[11px] text-[#4F6E5E] leading-relaxed">
-                  We're here for you every step of the way
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() => navigate('/patient')}
-                  className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#17261E] px-4 py-2 text-xs font-semibold text-white shadow-md hover:bg-[#23382D] transition-all"
-                >
-                  <Sparkles className="size-3 text-teal-300" />
-                  <span>Help With AI</span>
-                </button>
-              </div>
-
-              {/* Illustration: Cute Pink Floral Brain with sprout and butterflies */}
-              <div className="relative shrink-0 -mr-2 -mt-1">
-                <svg viewBox="0 0 120 120" className="size-28">
-                  {/* Sprout Stem & Leaves */}
-                  <path d="M 60 45 Q 60 25 50 15 Q 62 20 60 45" fill="#58A36E" />
-                  <ellipse cx="48" cy="18" rx="8" ry="4" transform="rotate(-30 48 18)" fill="#78C48E" />
-                  <ellipse cx="68" cy="24" rx="7" ry="3.5" transform="rotate(25 68 24)" fill="#78C48E" />
-
-                  {/* Brain / Flower Petals (Pink Cloud Cluster) */}
-                  <circle cx="45" cy="65" r="14" fill="#F8A7B8" />
-                  <circle cx="60" cy="55" r="16" fill="#FCAFC0" />
-                  <circle cx="75" cy="65" r="14" fill="#F8A7B8" />
-                  <circle cx="52" cy="78" r="13" fill="#FCA5B7" />
-                  <circle cx="68" cy="78" r="13" fill="#FCA5B7" />
-                  <circle cx="60" cy="70" r="14" fill="#FFAEC0" />
-
-                  {/* Small decorative heart */}
-                  <path d="M 90 40 C 90 35 96 35 98 38 C 100 35 106 35 106 40 C 106 45 98 50 98 50 C 98 50 90 45 90 40 Z" fill="#FCAFC0" />
-                  {/* Floating Yellow Butterfly */}
-                  <ellipse cx="28" cy="46" rx="4" ry="7" transform="rotate(-35 28 46)" fill="#FEE072" />
-                  <ellipse cx="24" cy="49" rx="3" ry="5" transform="rotate(35 24 49)" fill="#FDD048" />
-                  <circle cx="27" cy="47" r="1.5" fill="#D49910" />
+        <div>
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-5">
+            <div className="flex items-center gap-2">
+              <div className="size-9 rounded-full overflow-hidden" style={{ backgroundColor: C.sageLight }}>
+                <svg viewBox="0 0 36 36" className="size-full">
+                  <circle cx="18" cy="13" r="7" fill={C.sageMid} />
+                  <ellipse cx="18" cy="32" rx="11" ry="8" fill={C.sageMid} />
                 </svg>
               </div>
             </div>
-          </div>
-
-          {/* Section: "Your Journal" */}
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between">
-              <h2 className="font-serif text-[20px] font-normal text-[#1E1F24]">Your Journal</h2>
-              <button
-                type="button"
-                onClick={() => setCurrentScreen('analytics')}
-                className="text-xs font-medium text-[#7C7E83] hover:text-[#1E1F24]"
-              >
-                See All
+            <div className="flex items-center gap-3">
+              <button className="rounded-full p-2" style={{ backgroundColor: C.sageLight }}>
+                <Search className="size-4" style={{ color: C.dark }} />
+              </button>
+              <button className="rounded-full p-2" style={{ backgroundColor: C.sageLight }}>
+                <Bell className="size-4" style={{ color: C.dark }} />
               </button>
             </div>
+          </div>
 
-            {/* Journal Item 1 */}
-            <div
-              onClick={() => setCurrentScreen('meditation')}
-              className="cursor-pointer flex items-center justify-between rounded-3xl bg-white p-4 shadow-xs border border-black/5 hover:border-black/15 transition-all"
-            >
-              <div className="flex items-center gap-3.5">
-                {/* Pastel bubble icon */}
-                <div className="flex size-11 items-center justify-center rounded-2xl bg-[#EDE7F9]">
-                  <span className="text-xl">💭</span>
-                </div>
-                <div>
-                  <p className="text-[11px] text-[#86888E]">12 September 2024</p>
-                  <p className="text-xs font-medium text-[#222326] mt-0.5 leading-snug">
-                    Write freely about what's occupying your thoughts today.
-                  </p>
-                </div>
+          {/* Greeting */}
+          <div className="px-5 pt-4">
+            <p className="text-xs" style={{ color: C.muted }}>Bonjour 🌱</p>
+            <h1 className="mt-0.5 text-3xl font-bold leading-tight" style={{ color: C.dark, fontFamily: 'Georgia, serif' }}>
+              Comment avez-vous<br />vécu votre journée ?
+            </h1>
+          </div>
+
+          {/* Mood pills */}
+          <div className="mt-5 px-5">
+            <div className="flex flex-wrap gap-2.5">
+              {moods.map((mood) => (
+                <button
+                  key={mood.label}
+                  type="button"
+                  onClick={() => void handleSelectMood(mood.label, mood.score)}
+                  className="flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-all hover:scale-105"
+                  style={{
+                    borderColor: selectedMood === mood.label ? C.dark : C.sageLight,
+                    backgroundColor: selectedMood === mood.label ? C.sageLight : C.cream,
+                    color: C.dark,
+                  }}
+                >
+                  <span className="text-xl">{mood.emoji}</span>
+                  <span className="text-xs">{mood.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* AI Reply toast */}
+          {aiToast && (
+            <div className="mx-5 mt-4 rounded-2xl p-4 text-xs leading-relaxed" style={{ backgroundColor: C.sageLight, color: C.darkMid }}>
+              <Sparkles className="mb-1 size-4" style={{ color: C.dark }} />
+              {aiToast}
+            </div>
+          )}
+
+          {/* Daily focus card — dark card à la Velora */}
+          <div className="mx-5 mt-5 overflow-hidden rounded-3xl" style={{ backgroundColor: C.dark }}>
+            <div className="relative p-5">
+              {/* Landscape SVG */}
+              <svg viewBox="0 0 320 90" className="absolute inset-0 size-full opacity-20">
+                <ellipse cx="80" cy="90" rx="130" ry="70" fill={C.sageMid} />
+                <ellipse cx="260" cy="90" rx="120" ry="60" fill={C.sage} />
+                <circle cx="240" cy="30" r="28" fill={C.sageLight} />
+              </svg>
+              <div className="relative">
+                <span className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: C.sageMid }}>
+                  Focus du jour
+                </span>
+                <h2 className="mt-1 text-xl font-bold leading-snug" style={{ color: C.cream, fontFamily: 'Georgia, serif' }}>
+                  Prenez soin de votre bien-être mental
+                </h2>
+                <p className="mt-1 text-xs" style={{ color: C.sageMid }}>
+                  Nous sommes là pour vous, chaque étape du chemin.
+                </p>
+                <button
+                  className="mt-3 flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold"
+                  style={{ backgroundColor: C.sageLight, color: C.dark }}
+                  onClick={() => setCurrentScreen('meditation')}
+                >
+                  ▶ Commencer
+                </button>
               </div>
-              <ChevronRight className="size-4 text-[#A1A3A8] shrink-0 ml-2" />
+            </div>
+          </div>
+
+          {/* Journal section */}
+          <div className="mt-6 px-5">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-base" style={{ color: C.dark, fontFamily: 'Georgia, serif' }}>Votre journal</h3>
+              <button className="text-xs font-semibold" style={{ color: C.sage }}>Voir tout</button>
             </div>
 
-            {/* Journal Item 2 */}
-            <div
-              onClick={() => setCurrentScreen('meditation')}
-              className="cursor-pointer flex items-center justify-between rounded-3xl bg-white p-4 shadow-xs border border-black/5 hover:border-black/15 transition-all"
-            >
-              <div className="flex items-center gap-3.5">
-                {/* Sun & sprout icon */}
-                <div className="flex size-11 items-center justify-center rounded-2xl bg-[#FFF6D9]">
-                  <span className="text-xl">🌱</span>
-                </div>
-                <div>
-                  <p className="text-[11px] text-[#86888E]">10 November 2024</p>
-                  <p className="text-xs font-medium text-[#222326] mt-0.5 leading-snug">
-                    What's been running through your head today?
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="size-4 text-[#A1A3A8] shrink-0 ml-2" />
+            <div className="mt-3 flex flex-col gap-3">
+              {[
+                { date: '12 Septembre 2024', title: 'Écrire librement sur ce qui occupe vos pensées.' },
+                { date: '10 Novembre 2024', title: "Qu'est-ce qui a traversé votre esprit aujourd'hui ?" },
+              ].map((j, i) => (
+                <button
+                  key={i}
+                  className="flex items-center justify-between rounded-2xl p-4 text-left"
+                  style={{ backgroundColor: C.cream, border: `1px solid ${C.sageLight}` }}
+                >
+                  <div>
+                    <p className="text-[10px]" style={{ color: C.muted }}>{j.date}</p>
+                    <p className="mt-0.5 text-xs font-medium" style={{ color: C.dark }}>{j.title}</p>
+                  </div>
+                  <ChevronRight className="size-4 shrink-0" style={{ color: C.muted }} />
+                </button>
+              ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* SCREEN 2: MEDITATION STRESS RELAXATION (Center Mockup) */}
-      {/* ========================================================================= */}
+      {/* ───────────── SCREEN 2: Meditation ───────────── */}
       {currentScreen === 'meditation' && (
-        <div className="flex flex-col gap-6 p-5">
-          {/* Top Bar with Back Arrow */}
-          <div className="flex items-center justify-between pt-1">
-            <button
-              type="button"
-              onClick={() => setCurrentScreen('home')}
-              className="flex size-9 items-center justify-center rounded-full bg-white shadow-xs border border-black/5"
-            >
-              <ArrowLeft className="size-4" />
+        <div className="flex flex-col items-center px-5 pt-6">
+          {/* Back + icons */}
+          <div className="flex w-full items-center justify-between mb-6">
+            <button onClick={() => setCurrentScreen('home')} className="rounded-full p-2" style={{ backgroundColor: C.sageLight }}>
+              <ArrowLeft className="size-4" style={{ color: C.dark }} />
             </button>
-
-            <div className="flex items-center gap-3 text-[#3E4044]">
-              <Search className="size-5" />
-              <Bell className="size-5" />
+            <div className="flex gap-2">
+              <button className="rounded-full p-2" style={{ backgroundColor: C.sageLight }}>
+                <Search className="size-4" style={{ color: C.dark }} />
+              </button>
+              <button className="rounded-full p-2" style={{ backgroundColor: C.sageLight }}>
+                <Bell className="size-4" style={{ color: C.dark }} />
+              </button>
             </div>
           </div>
 
-          {/* Badge: Powered by AI */}
-          <div className="flex justify-center pt-2">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#E3F6F4] px-3.5 py-1 text-xs font-medium text-[#1A736B]">
-              <Sparkles className="size-3.5" />
-              <span>Powered by AI</span>
-            </div>
+          {/* AI badge */}
+          <div
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold"
+            style={{ backgroundColor: C.sageLight, color: C.dark }}
+          >
+            <Sparkles className="size-3" />
+            Propulsé par l'IA
           </div>
 
-          {/* Title */}
-          <div className="text-center">
-            <h1 className="font-serif text-[28px] font-normal tracking-tight text-[#1E1F24] leading-tight">
-              Meditation Stress <br /> Relaxation
-            </h1>
-            <p className="font-mono text-xs font-semibold text-[#66686E] mt-3">
-              {formatTimer(secondsLeft)}
-            </p>
-          </div>
+          <h1 className="mt-3 text-center text-3xl font-bold leading-tight" style={{ color: C.dark, fontFamily: 'Georgia, serif' }}>
+            Méditation<br />Stress & Relaxation
+          </h1>
 
-          {/* Waveform Soundwave Visualization */}
-          <div className="flex items-center justify-center gap-1 h-12 px-4">
-            {[18, 30, 24, 42, 35, 20, 28, 48, 32, 22, 16, 26, 40, 30, 22, 18, 34, 28, 16].map((h, i) => (
+          <p className="mt-2 text-2xl font-mono font-bold" style={{ color: C.sage }}>
+            {formatTimer(secondsLeft)}
+          </p>
+
+          {/* Waveform */}
+          <div className="mt-4 flex items-center gap-0.5 h-8">
+            {Array.from({ length: 32 }, (_, i) => (
               <div
                 key={i}
-                className={cn(
-                  'w-1 rounded-full transition-all duration-300',
-                  isPlaying ? 'bg-[#299C95] animate-pulse' : 'bg-[#9CD3CF]'
-                )}
-                style={{ height: `${isPlaying ? (h * 1.2) % 48 + 12 : h}px` }}
+                className="w-1 rounded-full transition-all duration-300"
+                style={{
+                  height: isPlaying ? `${10 + Math.sin(i * 0.6 + Date.now() * 0.001) * 14 + 14}px` : '6px',
+                  backgroundColor: i < 16 ? C.dark : C.sageMid,
+                }}
               />
             ))}
           </div>
 
-          {/* Centerpiece Illustration: Meditating Person on Arches */}
-          <div className="relative flex items-center justify-center py-4">
-            <svg viewBox="0 0 240 200" className="w-64 h-52">
-              {/* Glowing Arches (Yellow to Orange) */}
-              <path d="M 40 180 A 80 80 0 0 1 200 180" fill="#F8C843" opacity="0.9" />
-              <path d="M 60 180 A 60 60 0 0 1 180 180" fill="#ECA92F" />
-
-              {/* Floating Purple Ribbons */}
-              <path d="M 10 90 Q 70 70 120 100 T 230 80" fill="none" stroke="#A793E8" strokeWidth="12" strokeLinecap="round" opacity="0.8" />
-              <path d="M 20 120 Q 80 100 140 130 T 220 110" fill="none" stroke="#B8A7EF" strokeWidth="8" strokeLinecap="round" opacity="0.6" />
-
-              {/* Floating Butterfly & Heart */}
-              <ellipse cx="30" cy="95" rx="6" ry="10" transform="rotate(-25 30 95)" fill="#FEE072" />
-              <path d="M 210 95 C 210 90 216 90 218 93 C 220 90 226 90 226 95 C 226 100 218 105 218 105 Z" fill="#F8A7B8" />
-
-              {/* Meditating Figure (Pink) */}
-              {/* Head */}
-              <circle cx="120" cy="115" r="9" fill="#F8A7B8" />
-              {/* Torso */}
-              <path d="M 112 125 Q 120 120 128 125 L 128 145 L 112 145 Z" fill="#F8A7B8" />
-              {/* Crossed Legs */}
-              <ellipse cx="120" cy="155" rx="35" ry="8" fill="#F8A7B8" />
-              {/* Hands in Mudra */}
-              <path d="M 112 130 L 98 142 L 108 146" fill="none" stroke="#F8A7B8" strokeWidth="3.5" strokeLinecap="round" />
-              <path d="M 128 130 L 142 142 L 132 146" fill="none" stroke="#F8A7B8" strokeWidth="3.5" strokeLinecap="round" />
+          {/* Illustration — landscape with meditating figure */}
+          <div
+            className="mt-6 w-full overflow-hidden rounded-3xl"
+            style={{ backgroundColor: C.sageLight, height: 220 }}
+          >
+            <svg viewBox="0 0 320 220" className="size-full">
+              {/* Sky gradient */}
+              <defs>
+                <radialGradient id="sunGrad" cx="50%" cy="60%" r="50%">
+                  <stop offset="0%" stopColor="#FAF8F4" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#D8E5D8" stopOpacity="0" />
+                </radialGradient>
+              </defs>
+              <rect width="320" height="220" fill="#D8E5D8" />
+              {/* Sun */}
+              <circle cx="160" cy="110" r="55" fill="url(#sunGrad)" />
+              {/* Hills */}
+              <ellipse cx="60" cy="220" rx="150" ry="90" fill="#B5C9B5" opacity="0.6" />
+              <ellipse cx="270" cy="220" rx="130" ry="80" fill="#7A9A7A" opacity="0.5" />
+              <ellipse cx="160" cy="220" rx="200" ry="65" fill="#2C3A2C" opacity="0.12" />
+              {/* Meditating figure */}
+              <ellipse cx="160" cy="175" rx="30" ry="10" fill="#B5C9B5" opacity="0.4" />
+              <circle cx="160" cy="145" r="10" fill="#E8D5C8" />
+              {/* Body */}
+              <path d="M140 155 Q160 165 180 155 Q175 185 160 183 Q145 185 140 155Z" fill="#E8D5C8" />
+              {/* Arms */}
+              <path d="M140 162 Q125 170 120 165" stroke="#E8D5C8" strokeWidth="4" fill="none" strokeLinecap="round" />
+              <path d="M180 162 Q195 170 200 165" stroke="#E8D5C8" strokeWidth="4" fill="none" strokeLinecap="round" />
+              {/* Decorative elements */}
+              <path d="M80 60 Q95 40 110 60 Q95 75 80 60Z" fill="#7A9A7A" opacity="0.4" />
+              <circle cx="250" cy="80" r="6" fill="#E8D5C8" opacity="0.6" />
+              <circle cx="70" cy="90" r="4" fill="#E8D5C8" opacity="0.5" />
             </svg>
           </div>
 
-          {/* Media Player Controls (15s back, Play/Pause Teal Circle, Skip) */}
-          <div className="flex items-center justify-center gap-7 pt-2">
-            {/* -15s Button */}
+          {/* Controls */}
+          <div className="mt-6 flex items-center justify-center gap-6">
             <button
-              type="button"
-              onClick={() => setSecondsLeft((prev) => Math.min(275, prev + 15))}
-              className="flex size-11 items-center justify-center rounded-full bg-white shadow-xs border border-black/10 text-xs font-bold text-[#3E4044] hover:bg-black/5"
+              className="flex size-11 items-center justify-center rounded-full border-2 text-sm font-bold"
+              style={{ borderColor: C.sageMid, color: C.dark }}
             >
               15
             </button>
-
-            {/* Big Teal Play/Pause Button */}
             <button
-              type="button"
               onClick={() => setIsPlaying(!isPlaying)}
-              className="flex size-16 items-center justify-center rounded-full bg-[#20B0A7] text-white shadow-lg shadow-[#20B0A7]/30 hover:bg-[#1A9C94] transition-transform active:scale-95"
+              className="flex size-16 items-center justify-center rounded-full shadow-lg transition-all hover:scale-105"
+              style={{ backgroundColor: C.dark }}
             >
-              {isPlaying ? (
-                <div className="size-5 rounded-sm bg-white" />
-              ) : (
-                <div className="ml-1 size-0 border-y-[9px] border-y-transparent border-l-[15px] border-l-white" />
-              )}
+              {isPlaying
+                ? <div className="flex gap-1"><div className="h-5 w-1.5 rounded-full" style={{ backgroundColor: C.cream }} /><div className="h-5 w-1.5 rounded-full" style={{ backgroundColor: C.cream }} /></div>
+                : <div className="ml-1 border-y-8 border-l-[14px] border-transparent border-l-current" style={{ color: C.cream }} />
+              }
             </button>
-
-            {/* Skip Button */}
-            <button
-              type="button"
-              onClick={() => setSecondsLeft(275)}
-              className="flex size-11 items-center justify-center rounded-full bg-white shadow-xs border border-black/10 text-[#3E4044] hover:bg-black/5"
-            >
-              <RotateCcw className="size-4" />
+            <button className="rounded-full p-2.5" style={{ backgroundColor: C.sageLight }}>
+              <RotateCcw className="size-5" style={{ color: C.dark }} />
             </button>
           </div>
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* SCREEN 3: EMOTION ANALYSIS (Right Mockup) */}
-      {/* ========================================================================= */}
+      {/* ───────────── SCREEN 3: Emotion Analysis ───────────── */}
       {currentScreen === 'analytics' && (
-        <div className="flex flex-col gap-6 p-5">
-          {/* Top Bar with Back Arrow */}
-          <div className="flex items-center justify-between pt-1">
-            <button
-              type="button"
-              onClick={() => setCurrentScreen('home')}
-              className="flex size-9 items-center justify-center rounded-full bg-white shadow-xs border border-black/5"
-            >
-              <ArrowLeft className="size-4" />
+        <div className="px-5 pt-5">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-5">
+            <button onClick={() => setCurrentScreen('home')} className="rounded-full p-2" style={{ backgroundColor: C.sageLight }}>
+              <ArrowLeft className="size-4" style={{ color: C.dark }} />
             </button>
-
-            <div className="flex items-center gap-3 text-[#3E4044]">
-              <Search className="size-5" />
-              <Bell className="size-5" />
+            <div className="flex gap-2">
+              <button className="rounded-full p-2" style={{ backgroundColor: C.sageLight }}>
+                <Search className="size-4" style={{ color: C.dark }} />
+              </button>
+              <button className="rounded-full p-2" style={{ backgroundColor: C.sageLight }}>
+                <Bell className="size-4" style={{ color: C.dark }} />
+              </button>
             </div>
           </div>
 
-          {/* Date & Title */}
-          <div className="text-center">
-            <p className="text-xs text-[#7B7D82]">12 November 2024</p>
-            <h1 className="font-serif text-[28px] font-normal tracking-tight text-[#1E1F24] mt-0.5">
-              Emotion Analysis
-            </h1>
-          </div>
+          <p className="text-xs" style={{ color: C.muted }}>12 Novembre 2024</p>
+          <h1 className="mt-0.5 text-2xl font-bold" style={{ color: C.dark, fontFamily: 'Georgia, serif' }}>
+            Analyse Émotionnelle
+          </h1>
 
-          {/* Calendar Week Selector */}
-          <div className="flex items-center justify-between px-1">
-            {[
-              { d: 11, day: 'S' },
-              { d: 12, day: 'M' },
-              { d: 13, day: 'T' },
-              { d: 14, day: 'W' },
-              { d: 15, day: 'T' },
-              { d: 16, day: 'F' },
-              { d: 17, day: 'S' },
-              { d: 18, day: 'S' },
-            ].map((item) => {
-              const isSelected = selectedDay === item.d
-              return (
-                <button
-                  key={item.d}
-                  type="button"
-                  onClick={() => setSelectedDay(item.d)}
-                  className="flex flex-col items-center gap-1.5"
+          {/* Week calendar */}
+          <div className="mt-4 flex justify-between">
+            {days.map((d, i) => (
+              <button
+                key={d}
+                onClick={() => setSelectedDay(d)}
+                className="flex flex-col items-center gap-1"
+              >
+                <span className="text-[9px] font-semibold uppercase" style={{ color: C.muted }}>{dayLabels[i]}</span>
+                <div
+                  className="flex size-7 items-center justify-center rounded-full text-xs font-bold transition-all"
+                  style={
+                    selectedDay === d
+                      ? { backgroundColor: C.dark, color: C.cream }
+                      : { backgroundColor: 'transparent', color: C.darkMid }
+                  }
                 >
-                  <div
-                    className={cn(
-                      'flex size-8 items-center justify-center rounded-full text-xs font-semibold transition-all',
-                      isSelected
-                        ? 'bg-[#29B0A7] text-white shadow-sm'
-                        : 'text-[#484A4F] hover:bg-black/5'
-                    )}
-                  >
-                    {item.d}
-                  </div>
-                  <span className="text-[10px] text-[#8C8E94]">{item.day}</span>
-                </button>
-              )
-            })}
+                  {d}
+                </div>
+              </button>
+            ))}
           </div>
 
-          {/* AI Analytic Curve Card */}
-          <div className="rounded-3xl bg-white p-5 shadow-xs border border-black/5">
+          {/* AI Analytic label */}
+          <div className="mt-5 flex items-center gap-1.5">
+            <Sparkles className="size-3.5" style={{ color: C.dark }} />
+            <span className="text-xs font-semibold" style={{ color: C.dark }}>IA Analytique</span>
+          </div>
+
+          {/* Mood curve chart */}
+          <div
+            className="mt-3 overflow-hidden rounded-2xl p-4"
+            style={{ backgroundColor: C.cream, border: `1px solid ${C.sageLight}` }}
+          >
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#209F97]">
-                <Sparkles className="size-4" />
-                <span>AI Analytic</span>
-              </div>
+              <span className="text-xs font-semibold" style={{ color: C.dark }}>Humeur</span>
+              <span className="text-xs font-bold" style={{ color: C.sage }}>88%</span>
             </div>
-
-            {/* SVG Wavy Curve with Mood 88% Pill Tag */}
-            <div className="relative pt-6 pb-2">
-              {/* Mood 88% floating tag */}
-              <div className="absolute right-14 top-0 rounded-full bg-[#F3EBF9] px-2.5 py-0.5 text-[10px] font-bold text-[#6D478A] shadow-xs">
-                Mood 88%
-              </div>
-
-              <svg viewBox="0 0 320 100" className="w-full h-24 overflow-visible">
-                {/* Horizontal Dotted Gridlines */}
-                <line x1="0" y1="20" x2="320" y2="20" stroke="#F0F0F2" strokeDasharray="3 3" />
-                <line x1="0" y1="50" x2="320" y2="50" stroke="#F0F0F2" strokeDasharray="3 3" />
-                <line x1="0" y1="80" x2="320" y2="80" stroke="#F0F0F2" strokeDasharray="3 3" />
-
-                {/* Smooth Lilac Wave Curve */}
+            {/* Y axis labels */}
+            <div className="relative" style={{ height: 100 }}>
+              {[20, 40, 60, 80, 100].map((v) => (
+                <div
+                  key={v}
+                  className="absolute w-full border-t text-[9px]"
+                  style={{
+                    bottom: `${v}%`,
+                    borderColor: `${C.sageLight}`,
+                    color: C.muted,
+                  }}
+                >
+                  <span className="pr-1">{v}%</span>
+                </div>
+              ))}
+              {/* SVG Curve */}
+              <svg viewBox="0 0 280 100" className="absolute inset-0 size-full" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="curveGrad" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor={C.sage} stopOpacity="0.3" />
+                    <stop offset="100%" stopColor={C.sage} stopOpacity="0" />
+                  </linearGradient>
+                </defs>
                 <path
-                  d="M 10 75 Q 60 40 100 68 T 190 70 T 260 25 T 310 55"
+                  d="M0 70 C40 60 60 80 100 50 C130 30 150 15 180 12 C210 10 240 30 280 25"
                   fill="none"
-                  stroke="#C289D9"
-                  strokeWidth="3.5"
+                  stroke={C.sage}
+                  strokeWidth="2"
                   strokeLinecap="round"
                 />
-
-                {/* Highlight Point on Peak */}
-                <circle cx="260" cy="25" r="4.5" fill="#C289D9" />
-                <circle cx="260" cy="25" r="7" fill="none" stroke="#C289D9" strokeWidth="1.5" />
+                <path
+                  d="M0 70 C40 60 60 80 100 50 C130 30 150 15 180 12 C210 10 240 30 280 25 L280 100 L0 100Z"
+                  fill="url(#curveGrad)"
+                />
+                {/* Peak dot */}
+                <circle cx="180" cy="12" r="4" fill={C.dark} />
               </svg>
-
-              {/* Percentages along bottom */}
-              <div className="flex items-center justify-between text-[10px] text-[#A2A4AA] pt-2">
-                <span>20%</span>
-                <span>40%</span>
-                <span>60%</span>
-                <span>80%</span>
-                <span>100%</span>
-              </div>
             </div>
           </div>
 
-          {/* 4 Stats Cards (2x2 Grid with exact icons & stats) */}
-          <div className="grid grid-cols-2 gap-3.5">
-            {/* Card 1: 78% Stress Level */}
-            <div className="rounded-3xl bg-white p-4 shadow-xs border border-black/5 flex flex-col justify-between">
-              <div className="flex justify-end">
-                {/* Pink tangled scribble */}
-                <svg viewBox="0 0 40 40" className="size-8">
-                  <path
-                    d="M 10 20 Q 25 5 15 25 Q 30 35 25 15 Q 10 30 30 20 Q 5 10 25 25"
-                    fill="none"
-                    stroke="#F695A6"
-                    strokeWidth="2.2"
-                  />
-                </svg>
+          {/* Stat cards 2×2 */}
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {[
+              { value: '78%', label: 'Niveau de Stress' },
+              { value: '4X', label: "Fréquence d'Anxiété" },
+              { value: '5h', label: 'Qualité du Sommeil' },
+              { value: '60%', label: 'Stabilité du Focus' },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="flex flex-col rounded-2xl p-4"
+                style={{ backgroundColor: C.cream, border: `1px solid ${C.sageLight}` }}
+              >
+                <span className="text-2xl font-bold" style={{ color: C.dark, fontFamily: 'Georgia, serif' }}>
+                  {stat.value}
+                </span>
+                <span className="mt-1 text-[11px]" style={{ color: C.muted }}>{stat.label}</span>
               </div>
-              <div className="mt-2">
-                <p className="font-serif text-[26px] font-bold text-[#1E1F24] leading-none">78%</p>
-                <p className="text-[11px] text-[#7C7E84] mt-1">Stress Level</p>
-              </div>
-            </div>
-
-            {/* Card 2: 4X Anxiety Frequency */}
-            <div className="rounded-3xl bg-white p-4 shadow-xs border border-black/5 flex flex-col justify-between">
-              <div className="flex justify-end">
-                {/* Purple Heart */}
-                <div className="size-6 text-[#9F8BE7]">
-                  <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="mt-2">
-                <p className="font-serif text-[26px] font-bold text-[#1E1F24] leading-none">4X</p>
-                <p className="text-[11px] text-[#7C7E84] mt-1">Anxiety Frequency</p>
-              </div>
-            </div>
-
-            {/* Card 3: 5h Sleep Quality */}
-            <div className="rounded-3xl bg-white p-4 shadow-xs border border-black/5 flex flex-col justify-between">
-              <div className="flex justify-end">
-                {/* Green Zzz */}
-                <div className="flex flex-col items-end text-[#71C598] font-bold text-xs leading-none">
-                  <span className="text-sm">z</span>
-                  <span className="text-xs mr-1">z</span>
-                  <span className="text-[10px] mr-2">z</span>
-                </div>
-              </div>
-              <div className="mt-2">
-                <p className="font-serif text-[26px] font-bold text-[#1E1F24] leading-none">5h</p>
-                <p className="text-[11px] text-[#7C7E84] mt-1">Sleep Quality</p>
-              </div>
-            </div>
-
-            {/* Card 4: 60% Focus Stability */}
-            <div className="rounded-3xl bg-white p-4 shadow-xs border border-black/5 flex flex-col justify-between">
-              <div className="flex justify-end">
-                {/* Golden target circles */}
-                <svg viewBox="0 0 30 30" className="size-7">
-                  <circle cx="15" cy="15" r="12" fill="none" stroke="#E5B239" strokeWidth="1.8" />
-                  <circle cx="15" cy="15" r="7" fill="none" stroke="#E5B239" strokeWidth="1.8" />
-                  <circle cx="15" cy="15" r="2.5" fill="#E5B239" />
-                </svg>
-              </div>
-              <div className="mt-2">
-                <p className="font-serif text-[26px] font-bold text-[#1E1F24] leading-none">60%</p>
-                <p className="text-[11px] text-[#7C7E84] mt-1">Focus Stability</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       )}
