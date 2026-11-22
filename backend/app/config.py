@@ -26,6 +26,8 @@ class Settings:
     smtp_user: str = _env("SMTP_USER")
     smtp_pass: str = _env("SMTP_PASS")
     frontend_origin: str = _env("FRONTEND_ORIGIN", "http://localhost:5173")
+    # Test page at /dev + /api/v1/dev/*. Keep true on your laptop, set false on any public server.
+    dev_tools: bool = _env("DEV_TOOLS", "false").lower() in ("1", "true", "yes")
 
     @property
     def demo_mode(self) -> bool:

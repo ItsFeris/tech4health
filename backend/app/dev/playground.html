@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tech4Health · Backend test page</title>
+<style>
+  :root {
+    --bg: #f6f9f9; --card: #fff; --ink: #1d2a33; --muted: #66757f; --line: #e1e8ea;
+    --primary: #2b8a8a; --primary-soft: #e3f2f1;
+    --green: #2f8f5b; --green-soft: #e4f4ea; --orange: #b56a12; --orange-soft: #fbefdc; --red: #c23a3a; --red-soft: #fbe5e5;
+    --radius: 12px; --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 24px; background: var(--card); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; }
+  header small { color: var(--muted); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .chip { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); white-space: nowrap; }
+  .chip.bad { background: var(--red-soft); color: var(--red); }
+  nav { display: flex; gap: 4px; padding: 10px 24px 0; flex-wrap: wrap; }
+  nav button { border: 0; background: transparent; padding: 8px 14px; border-radius: 8px 8px 0 0; cursor: pointer; color: var(--muted); font: inherit; }
+  nav button.on { background: var(--card); color: var(--ink); font-weight: 600; border: 1px solid var(--line); border-bottom-color: var(--card); margin-bottom: -1px; }
+  main { padding: 0 24px 40px; }
+  .panel { display: none; background: var(--card); border: 1px solid var(--line); border-radius: 0 var(--radius) var(--radius) var(--radius); padding: 20px; }
+  .panel.on { display: block; }
+  .lead { color: var(--muted); margin: 0 0 16px; max-width: 900px; }
+  .grid { display: grid; grid-template-columns: 300px 1fr; gap: 20px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 12px 0 4px; }
+  input, select, textarea { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
+  textarea { resize: vertical; }
+  button.btn { font: inherit; border: 0; border-radius: 8px; padding: 8px 14px; background: var(--primary); color: #fff; cursor: pointer; font-weight: 600; }
+  button.btn:disabled { opacity: .5; cursor: wait; }
+  button.ghost { background: transparent; color: var(--primary); border: 1px solid var(--line); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .phrases { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+  .phrase { text-align: left; font: inherit; font-size: 13px; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  .phrase:hover { border-color: var(--primary); }
+  .phrase b { font-size: 11px; margin-right: 6px; }
+  .chat { border: 1px solid var(--line); border-radius: var(--radius); height: 520px; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; background: #fbfdfd; }
+  .msg { max-width: 82%; padding: 10px 12px; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; }
+  .msg.user { align-self: flex-end; background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+  .msg.ai { align-self: flex-start; background: #fff; border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .msg.ai.red { border-color: var(--red); background: var(--red-soft); }
+  .meta { font-size: 12px; color: var(--muted); margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 6px; white-space: normal; }
+  .layers { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
+  .lvl { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .02em; }
+  .lvl.green { background: var(--green-soft); color: var(--green); } .lvl.orange { background: var(--orange-soft); color: var(--orange); } .lvl.red { background: var(--red-soft); color: var(--red); } .lvl.off { background: #eef1f2; color: var(--muted); }
+  .empty { color: var(--muted); text-align: center; margin: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-size: 12px; }
+  td.reason { color: var(--muted); font-size: 12px; }
+  .moods { display: flex; gap: 6px; }
+  .moods button { font-size: 22px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; cursor: pointer; }
+  .moods button.on { border-color: var(--primary); background: var(--primary-soft); }
+  .card { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; background: #fbfdfd; }
+  .card h3 { margin: 0 0 8px; font-size: 14px; }
+  .card ul { margin: 4px 0 10px; padding-left: 18px; }
+  pre { background: #f2f5f6; border-radius: 8px; padding: 10px; font: 12px/1.45 var(--mono); white-space: pre-wrap; max-height: 420px; overflow: auto; margin: 0; }
+  .error { color: var(--red); font-size: 13px; margin-top: 8px; }
+  .days td input { padding: 5px 8px; }
+  .days td:first-child { white-space: nowrap; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Tech4Health · Backend test page</h1>
+    <small>Runs the real AI, risk engine and summary code on what you type. Nothing is saved, no alert or email is sent.</small>
+  </div>
+  <div class="chips">
+    <span class="chip" id="st-db">database: …</span>
+    <span class="chip" id="st-ai">AI: …</span>
+    <span class="chip" id="st-kw">keywords: …</span>
+    <button class="btn ghost" id="reload" title="Re-read prompts, crisis.json and keywords.txt">Reload prompts</button>
+  </div>
+</header>
+
+<nav id="tabs">
+  <button data-tab="chat" class="on">Chat</button>
+  <button data-tab="risk">Risk check</button>
+  <button data-tab="checkin">Check-in</button>
+  <button data-tab="summary">Weekly summary</button>
+  <button data-tab="prompts">Prompts in use</button>
+</nav>
+
+<main>
+  <!-- CHAT -->
+  <section class="panel on" id="p-chat">
+    <p class="lead">Talk to the AI companion as a patient. Under each reply you see what each safety layer decided (keywords, AI check, mood trend), the final level, and what the real app would do.</p>
+    <div class="grid">
+      <div>
+        <label for="c-nick">Patient nickname</label>
+        <input id="c-nick" value="Yasmine" />
+        <label for="c-lang">Language</label>
+        <select id="c-lang">
+          <option value="darija">Tunisian darija</option><option value="ar">Arabic</option><option value="fr">French</option><option value="en">English</option>
+        </select>
+        <label for="c-hw">This week's homework (one per line)</label>
+        <textarea id="c-hw" rows="2">5-minute breathing, every evening</textarea>
+        <label for="c-moods">Recent moods, oldest first (1-5)</label>
+        <input id="c-moods" value="3, 3, 2, 3, 4, 3" />
+        <label>Quick test messages</label>
+        <div class="phrases" id="phrases"></div>
+      </div>
+      <div>
+        <div class="chat" id="chat"><p class="empty">Pick a quick message or type your own below.</p></div>
+        <div class="row" style="margin-top:10px">
+          <input id="c-text" placeholder="Type as the patient… (Enter to send)" style="flex:1" />
+          <button class="btn" id="c-send">Send</button>
+          <button class="btn ghost" id="c-reset">New conversation</button>
+        </div>
+        <div class="error" id="c-err"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RISK -->
+  <section class="panel" id="p-risk">
+    <p class="lead">Test many messages at once against the risk engine. One message per line. Good for checking B's keyword list and the AI classifier, in every language.</p>
+    <textarea id="r-text" rows="8">Lyoum mezyen, 3malt el exercice
+ta3bet barcha, ma3adch nnajjem
+ma3adch nheb n3ich
+Je n'en peux plus, je dors plus depuis 3 jours
+أفكر أن أنهي حياتي
+I gave away all my things, I won't need them anymore</textarea>
+    <div class="row" style="margin-top:10px"><button class="btn" id="r-run">Check all</button><span id="r-status" class="chip" style="display:none"></span></div>
+    <div class="error" id="r-err"></div>
+    <div style="margin-top:16px; overflow-x:auto">
+      <table id="r-table" style="display:none">
+        <thead><tr><th>Message</th><th>Keywords</th><th>AI check</th><th>Final</th><th>Why</th><th>ms</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- CHECK-IN -->
+  <section class="panel" id="p-checkin">
+    <p class="lead">Simulate a daily mood check-in. The mood trend layer uses the recent moods plus today's.</p>
+    <div class="grid">
+      <div>
+        <label>Today's mood</label>
+        <div class="moods" id="k-moods"></div>
+        <label for="k-note">Note (optional)</label>
+        <textarea id="k-note" rows="3">Could not sleep again</textarea>
+        <label for="k-lang">Language</label>
+        <select id="k-lang"><option value="darija">Tunisian darija</option><option value="ar">Arabic</option><option value="fr">French</option><option value="en">English</option></select>
+        <label for="k-prev">Previous moods, oldest first</label>
+        <input id="k-prev" value="4, 3, 3, 2, 2" />
+        <div style="margin-top:12px"><button class="btn" id="k-run">Send check-in</button></div>
+        <div class="error" id="k-err"></div>
+      </div>
+      <div id="k-out"><p class="lead">The AI's answer and the risk decision appear here.</p></div>
+    </div>
+  </section>
+
+  <!-- SUMMARY -->
+  <section class="panel" id="p-summary">
+    <p class="lead">Fill in a fake week and generate the summary the specialist would read before the session.</p>
+    <div class="grid">
+      <div>
+        <label for="s-nick">Patient nickname</label>
+        <input id="s-nick" value="Karim" />
+        <label>Check-ins (mood 1-5 + note)</label>
+        <table class="days"><tbody id="s-days"></tbody></table>
+        <label for="s-hw">Homework (one per line, add "[x]" if done)</label>
+        <textarea id="s-hw" rows="2">Sleep diary
+[x] Walk 20 minutes</textarea>
+        <label for="s-msgs">Chat messages (only with full_chat consent, one per line)</label>
+        <textarea id="s-msgs" rows="3">My parents keep asking about my exam results
+I feel empty since Thursday</textarea>
+        <div style="margin-top:12px"><button class="btn" id="s-run">Generate summary</button></div>
+        <div class="error" id="s-err"></div>
+      </div>
+      <div id="s-out"><p class="lead">The summary appears here.</p></div>
+    </div>
+  </section>
+
+  <!-- PROMPTS -->
+  <section class="panel" id="p-prompts">
+    <p class="lead">The prompts the backend is using right now. Edit the files in <code>backend/app/ai/prompts/</code> (or <code>backend/app/risk/keywords.txt</code>), save, then click <b>Reload prompts</b> at the top. No restart needed.</p>
+    <div id="pr-out"></div>
+  </section>
+</main>
+
+<script>
+const API = '/api/v1/dev'
+const $ = (id) => document.getElementById(id)
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag)
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v)
+    else n.setAttribute(k, v)
+  }
+  for (const k of kids.flat()) if (k != null) n.append(k instanceof Node ? k : document.createTextNode(String(k)))
+  return n
+}
+const lvl = (r) => r.reason === 'AI check unavailable.'
+  ? el('span', { class: 'lvl off', title: 'The AI check did not run (AI off or error)' }, 'off')
+  : el('span', { class: 'lvl ' + r.level, title: r.reason }, r.level)
+const nums = (s) => s.split(/[,\s]+/).map(Number).filter((n) => n >= 1 && n <= 5)
+
+async function call(path, body) {
+  const res = await fetch(API + path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`)
+  return data
+}
+function busy(btn, on) { btn.disabled = on; btn.dataset.label ??= btn.textContent; btn.textContent = on ? 'Working…' : btn.dataset.label }
+
+// ---------- header + tabs ----------
+async function loadInfo(fresh) {
+  try {
+    const i = await call(fresh ? '/reload' : '/info', fresh ? {} : undefined)
+    $('st-db').textContent = 'database: ' + i.database
+    $('st-ai').textContent = i.ai === 'groq' ? 'AI: ' + i.model : 'AI: off (canned replies)'
+    $('st-ai').classList.toggle('bad', i.ai !== 'groq')
+    $('st-kw').textContent = `keywords: ${i.keywords.red} red · ${i.keywords.orange} orange`
+    const out = $('pr-out'); out.replaceChildren()
+    for (const [name, text] of Object.entries(i.prompts)) out.append(el('div', { class: 'card', style: 'margin-bottom:12px' }, el('h3', {}, name), el('pre', {}, text)))
+  } catch (e) { $('st-ai').textContent = 'backend error: ' + e.message; $('st-ai').classList.add('bad') }
+}
+$('reload').onclick = async () => { busy($('reload'), true); await loadInfo(true); busy($('reload'), false) }
+$('tabs').onclick = (e) => {
+  const t = e.target.dataset.tab; if (!t) return
+  for (const b of $('tabs').children) b.classList.toggle('on', b.dataset.tab === t)
+  for (const p of document.querySelectorAll('.panel')) p.classList.toggle('on', p.id === 'p-' + t)
+}
+
+// ---------- chat ----------
+const PHRASES = [
+  ['green', 'darija', 'Lyoum mezyen, 3malt el exercice ta3 respiration'],
+  ['green', 'fr', "J'ai un peu de stress avec les examens"],
+  ['orange', 'darija', 'ta3bet barcha w ma3adch nnajjem'],
+  ['orange', 'fr', "Je n'en peux plus, je dors plus depuis 3 jours"],
+  ['red', 'darija', 'ma3adch nheb n3ich'],
+  ['red', 'ar', 'أفكر أن أنهي حياتي'],
+  ['red?', 'en', "I gave away all my things, I won't need them anymore"],
+]
+for (const [exp, lang, text] of PHRASES) {
+  $('phrases').append(el('button', { class: 'phrase', title: 'Expected: ' + exp, onclick: () => { $('c-lang').value = lang; $('c-text').value = text; sendChat() } },
+    el('b', { class: 'lvl ' + exp.replace('?', '') }, exp), text))
+}
+let history = []
+function bubble(sender, text, extra) {
+  const chat = $('chat'); chat.querySelector('.empty')?.remove()
+  const m = el('div', { class: 'msg ' + sender }, text); if (extra) m.append(extra)
+  chat.append(m); chat.scrollTop = chat.scrollHeight; return m
+}
+async function sendChat() {
+  const text = $('c-text').value.trim(); if (!text) return
+  $('c-err').textContent = ''; busy($('c-send'), true)
+  bubble('user', text); $('c-text').value = ''
+  const typing = bubble('ai', '…')
+  try {
+    const r = await call('/chat', {
+      text, history, nickname: $('c-nick').value, language: $('c-lang').value,
+      homework: $('c-hw').value.split('\n'), moods: nums($('c-moods').value),
+    })
+    typing.remove()
+    const meta = el('div', { class: 'meta' },
+      el('div', { class: 'layers' }, 'Keywords ', lvl(r.risk.rules), ' AI check ', lvl(r.risk.llm), ' Trend ', lvl(r.risk.trend), ' → Final ', lvl(r.risk.final)),
+      el('div', {}, 'Why: ' + r.risk.final.reason),
+      el('div', {}, 'App would: ' + r.would_do),
+      el('div', {}, `Time: ${r.timing_ms.total} ms (AI risk check ${r.timing_ms.risk_ai_check} ms, reply ${r.timing_ms.reply} ms)`),
+      r.ai_error ? el('div', { class: 'error' }, 'AI error: ' + r.ai_error) : null)
+    const m = bubble('ai', r.reply, meta); if (r.risk.final.level === 'red') m.classList.add('red')
+    history.push({ sender: 'user', content: text }, { sender: 'ai', content: r.reply })
+  } catch (e) { typing.remove(); $('c-err').textContent = e.message }
+  busy($('c-send'), false); $('c-text').focus()
+}
+$('c-send').onclick = sendChat
+$('c-text').onkeydown = (e) => { if (e.key === 'Enter') sendChat() }
+$('c-reset').onclick = () => { history = []; $('chat').replaceChildren(el('p', { class: 'empty' }, 'New conversation.')) }
+
+// ---------- risk batch ----------
+$('r-run').onclick = async () => {
+  const lines = $('r-text').value.split('\n').map((s) => s.trim()).filter(Boolean)
+  if (!lines.length) return
+  $('r-err').textContent = ''; busy($('r-run'), true)
+  const body = $('r-table').querySelector('tbody'); body.replaceChildren(); $('r-table').style.display = ''
+  const st = $('r-status'); st.style.display = ''
+  for (const [i, text] of lines.entries()) {
+    st.textContent = `${i + 1} / ${lines.length}`
+    try {
+      const r = await call('/risk', { text })
+      body.append(el('tr', {}, el('td', {}, text), el('td', {}, lvl(r.rules)), el('td', {}, lvl(r.llm)), el('td', {}, lvl(r.final)),
+        el('td', { class: 'reason' }, r.final.reason + (r.ai_error ? ' · AI error: ' + r.ai_error : '')), el('td', {}, r.timing_ms)))
+    } catch (e) { body.append(el('tr', {}, el('td', {}, text), el('td', { colspan: 5, class: 'reason' }, 'Error: ' + e.message))) }
+  }
+  st.textContent = 'done'; busy($('r-run'), false)
+}
+
+// ---------- check-in ----------
+let mood = 2
+const FACES = ['😞', '🙁', '😐', '🙂', '😄']
+FACES.forEach((f, i) => $('k-moods').append(el('button', { 'data-m': i + 1, class: i + 1 === mood ? 'on' : '', title: 'Mood ' + (i + 1), onclick: (e) => {
+  mood = i + 1; for (const b of $('k-moods').children) b.classList.toggle('on', Number(b.dataset.m) === mood)
+} }, f)))
+$('k-run').onclick = async () => {
+  $('k-err').textContent = ''; busy($('k-run'), true)
+  try {
+    const r = await call('/checkin', { mood, note: $('k-note').value || null, language: $('k-lang').value, moods: nums($('k-prev').value) })
+    $('k-out').replaceChildren(el('div', { class: 'card' },
+      el('h3', {}, 'AI reply'), el('p', {}, r.reply),
+      el('div', { class: 'layers' }, 'Risk ', lvl(r.risk)), el('p', { class: 'reason' }, 'Why: ' + r.risk.reason),
+      el('p', { class: 'reason' }, 'App would: ' + r.would_do), el('p', { class: 'reason' }, `Time: ${r.timing_ms} ms`),
+      r.ai_error ? el('p', { class: 'error' }, 'AI error: ' + r.ai_error) : null))
+  } catch (e) { $('k-err').textContent = e.message }
+  busy($('k-run'), false)
+}
+
+// ---------- summary ----------
+const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d })()
+const SAMPLE = [[4, ''], [3, ''], [3, 'Could not sleep'], [2, ''], [2, 'Exam stress'], [1, 'Feeling empty'], [2, '']]
+SAMPLE.forEach(([m, n], i) => {
+  const d = new Date(monday); d.setDate(monday.getDate() + i)
+  const iso = d.toISOString().slice(0, 10)
+  $('s-days').append(el('tr', { 'data-day': iso },
+    el('td', {}, d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })),
+    el('td', { style: 'width:70px' }, el('input', { type: 'number', min: 1, max: 5, value: m, class: 'm' })),
+    el('td', {}, el('input', { value: n, placeholder: 'note', class: 'n' }))))
+})
+$('s-run').onclick = async () => {
+  $('s-err').textContent = ''; busy($('s-run'), true)
+  const checkins = [...$('s-days').children].map((tr) => ({ day: tr.dataset.day, mood: Number(tr.querySelector('.m').value), note: tr.querySelector('.n').value || null })).filter((c) => c.mood >= 1 && c.mood <= 5)
+  const homework = $('s-hw').value.split('\n').map((s) => s.trim()).filter(Boolean).map((s) => ({ done: s.startsWith('[x]'), title: s.replace(/^\[x\]\s*/, '') }))
+  try {
+    const r = await call('/summary', { nickname: $('s-nick').value, week_start: monday.toISOString().slice(0, 10), checkins, homework, messages: $('s-msgs').value.split('\n').filter(Boolean) })
+    const s = r.summary
+    const list = (items) => items.length ? el('ul', {}, items.map((x) => el('li', {}, x))) : el('p', { class: 'reason' }, 'none')
+    $('s-out').replaceChildren(el('div', { class: 'card' },
+      el('h3', {}, `Week of ${monday.toISOString().slice(0, 10)} · mood ${s.mood_trend} (avg ${s.mood_avg ?? '–'})`),
+      el('b', {}, 'Key events'), list(s.key_events),
+      el('b', {}, 'Concerns'), list(s.concerns),
+      el('b', {}, 'Homework'), list(s.homework.map((h) => (h.done ? '✅ ' : '⬜ ') + h.title)),
+      el('b', {}, 'Suggested topic for the session'), el('p', {}, s.prep_topic ?? '–'),
+      el('p', { class: 'reason' }, `Time: ${r.timing_ms} ms`),
+      r.ai_error ? el('p', { class: 'error' }, 'AI error: ' + r.ai_error) : null,
+      el('details', {}, el('summary', {}, 'Raw JSON'), el('pre', {}, JSON.stringify(s, null, 2)))))
+  } catch (e) { $('s-err').textContent = e.message }
+  busy($('s-run'), false)
+}
+
+loadInfo(false)
+</script>
+</body>
+</html>

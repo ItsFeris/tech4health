@@ -3,7 +3,7 @@
 import json
 
 from app import db
-from app.models import SummaryHomework, WeeklySummaryContent
+from app.models import SummaryHomework, WeekData, WeeklySummaryContent
 
 from . import llm
 from .anonymize import anonymize
@@ -19,7 +19,11 @@ def _trend(moods: list[int]) -> str:
 
 
 async def generate_weekly_summary(patient_id: str, week_start: str) -> WeeklySummaryContent:
-    data = await db.get_week_data(patient_id, week_start)
+    return await summarize(await db.get_week_data(patient_id, week_start))
+
+
+async def summarize(data: WeekData) -> WeeklySummaryContent:
+    """Pure function of the week's data (no database), so the /dev test page can call it too."""
     moods = [c.mood for c in data.checkins]
     base = {
         "mood_trend": _trend(moods),

@@ -6,12 +6,15 @@ Docs: http://localhost:8000/docs
 
 import logging
 
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import db
 from app.ai import llm
-from app.api import alerts, appointments, chat, checkins, homework, me, patients, questionnaires, sos, summaries, voice
+from app.api import alerts, appointments, chat, checkins, dev, homework, me, patients, questionnaires, sos, summaries, voice
 from app.config import settings
 from app.errors import install_error_handlers
 
@@ -28,6 +31,19 @@ install_error_handlers(app)
 
 for module in (me, appointments, homework, checkins, patients, alerts, chat, questionnaires, summaries, sos, voice):
     app.include_router(module.router, prefix="/api/v1")
+
+if settings.dev_tools:
+    app.include_router(dev.router, prefix="/api/v1")
+
+    @app.get("/dev", include_in_schema=False)
+    async def dev_page():
+        """Backend test page: http://localhost:8000/dev"""
+        return FileResponse(Path(__file__).resolve().parent / "dev" / "playground.html")
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse("/dev" if settings.dev_tools else "/docs")
 
 
 @app.get("/health")

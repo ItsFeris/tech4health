@@ -15,3 +15,9 @@ def load(name: str) -> str:
 @lru_cache
 def crisis_texts() -> dict:
     return json.loads(load("crisis.json"))
+
+
+def reload_all() -> None:
+    """Forget cached prompt files so edits apply without restarting the server."""
+    load.cache_clear()
+    crisis_texts.cache_clear()
