@@ -103,9 +103,10 @@ export default function ChatPage() {
   const sending = Boolean(pending && !pending.failed)
 
   return (
-    <div className="relative min-h-svh overflow-hidden">
+    // Fixed full-height screen: the header stays put, only the conversation scrolls.
+    <div className="fixed inset-0 mx-auto flex max-w-[430px] flex-col overflow-hidden bg-background">
       <Hero tone="teal" height={380} />
-      <div className="relative z-10 flex flex-col gap-4 px-5 pt-6">
+      <div className="relative z-10 flex shrink-0 flex-col gap-4 px-5 pb-3 pt-6">
         <TopBar
           center={
             <Pill>
@@ -177,6 +178,9 @@ export default function ChatPage() {
           </div>
         )}
 
+      </div>
+
+      <div className="no-scrollbar relative z-10 min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-1">
         <section aria-label="Conversation" aria-live="polite" dir={rtl ? 'rtl' : undefined} lang={rtl ? 'ar' : undefined} className="flex flex-col gap-2.5">
           {loading ? (
             <>
@@ -215,7 +219,7 @@ export default function ChatPage() {
               )}
             </>
           )}
-          <div ref={bottomRef} aria-hidden="true" className="h-52 shrink-0" />
+          <div ref={bottomRef} aria-hidden="true" className="h-[232px] shrink-0" />
         </section>
       </div>
 
