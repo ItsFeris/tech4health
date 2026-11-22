@@ -33,3 +33,12 @@ for module in (me, appointments, homework, checkins, patients, alerts, chat, que
 @app.get("/health")
 async def health():
     return {"ok": True, "database": db.BACKEND, "ai": "groq" if llm.enabled() else "off (canned replies)"}
+
+
+@app.get("/health/ai")
+async def health_ai():
+    """Makes one tiny real AI call, to check the key AND the model actually work."""
+    if not llm.enabled():
+        return {"ok": False, "error": "GROQ_API_KEY is empty in backend/.env"}
+    text = await llm.chat_completion([{"role": "user", "content": "Reply with exactly: ahla"}], max_tokens=20, temperature=0)
+    return {"ok": bool(text), "model": settings.groq_chat_model, "reply": text, "error": None if text else llm.last_error}

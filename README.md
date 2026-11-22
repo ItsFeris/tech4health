@@ -32,7 +32,7 @@ API docs: http://localhost:8000/docs · Health: http://localhost:8000/health · 
 With an empty `backend/.env` the backend runs in **DEMO mode**: in-memory data, demo logins, canned AI replies.
 Copy `backend/.env.example` to `backend/.env` and fill in:
 
-- `GROQ_API_KEY` to turn on the real AI (free at console.groq.com)
+- `GROQ_API_KEY` to turn on the real AI (free at console.groq.com). Check it works at http://localhost:8000/health/ai
 - `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` to use the real database (run `supabase/migrations/001_init.sql`, then `002_rls.sql`, in the Supabase SQL editor)
 
 ### Frontend + real backend
@@ -42,4 +42,4 @@ or leave them empty to use the demo buttons against a DEMO-mode backend.
 
 ## Stack
 
-React + Vite + TypeScript + Tailwind + shadcn/ui · FastAPI · Supabase (Postgres, Auth, Realtime) · Groq (Llama) — all free tiers.
+React + Vite + TypeScript + Tailwind + shadcn/ui · FastAPI · Supabase (Postgres, Auth, Realtime) · Groq (gpt-oss) — all free tiers.

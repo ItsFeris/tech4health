@@ -23,10 +23,23 @@ def _groq():
     return _client
 
 
+last_error: Optional[str] = None
+
+
+def _is_reasoning_model() -> bool:
+    return settings.groq_chat_model.startswith("openai/gpt-oss")
+
+
 async def chat_completion(messages: list[dict], json_mode: bool = False, max_tokens: int = 400, temperature: float = 0.6) -> Optional[str]:
     """Returns the model's text, or None if the AI is off or the call failed (callers must have a fallback)."""
+    global last_error
     if not enabled():
         return None
+    extra: dict = {}
+    if _is_reasoning_model():
+        # gpt-oss "thinks" first and those tokens count in the budget: keep thinking short, give room for the answer.
+        extra = {"reasoning_effort": "low", "include_reasoning": False}
+        max_tokens = max_tokens * 3
     try:
         res = await _groq().chat.completions.create(
             model=settings.groq_chat_model,
@@ -34,11 +47,15 @@ async def chat_completion(messages: list[dict], json_mode: bool = False, max_tok
             max_tokens=max_tokens,
             temperature=temperature,
             response_format={"type": "json_object"} if json_mode else None,
-            timeout=20,
+            timeout=25,
+            extra_body=extra or None,
         )
-        return res.choices[0].message.content
-    except Exception as e:  # network, rate limit, bad key
-        log.warning("Groq call failed: %s", e)
+        text = res.choices[0].message.content
+        last_error = None if text else "empty answer from the model"
+        return text or None
+    except Exception as e:  # network, rate limit, bad key, retired model
+        last_error = f"{type(e).__name__}: {e}"[:300]
+        log.warning("Groq call failed: %s", last_error)
         return None
 
 

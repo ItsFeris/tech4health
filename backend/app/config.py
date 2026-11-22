@@ -19,7 +19,7 @@ class Settings:
     supabase_service_key: str = _env("SUPABASE_SERVICE_KEY")
     supabase_jwt_secret: str = _env("SUPABASE_JWT_SECRET")
     groq_api_key: str = _env("GROQ_API_KEY")
-    groq_chat_model: str = _env("GROQ_CHAT_MODEL", "llama-3.3-70b-versatile")
+    groq_chat_model: str = _env("GROQ_CHAT_MODEL", "openai/gpt-oss-120b")
     groq_stt_model: str = _env("GROQ_STT_MODEL", "whisper-large-v3")
     smtp_host: str = _env("SMTP_HOST")
     smtp_port: int = int(_env("SMTP_PORT", "587") or 587)
