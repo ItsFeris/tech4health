@@ -1,197 +1,142 @@
+// This week's homework (design: 5 · Homework, plus the empty state).
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Circle, Clock, ListChecks, Sparkles } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
+import { useNavigate } from 'react-router-dom'
+import { Check, Heart, Sprout } from 'lucide-react'
 import { getHomework, updateHomework } from '@/api'
 import type { Homework } from '@/types/contract'
+import { Cta, Headline, Hero, Notice, Pill, Skeleton, TopBar } from '@/components/t4h/kit'
+import { dayLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
+const CARD_TONES = [
+  { g: 'linear-gradient(140deg, #F0CEB1 0%, #F6E2D2 100%)', c: '#B06F45' },
+  { g: 'linear-gradient(140deg, #E4F2F9 0%, #D4EAF0 100%)', c: '#4F7FB8' },
+  { g: 'linear-gradient(140deg, #DDD8FF 0%, #E7E0F7 100%)', c: '#7A69C8' },
+  { g: 'linear-gradient(140deg, #CBECF5 0%, #D9F0EA 100%)', c: '#3A8C9F' },
+]
+
+type Filter = 'todo' | 'done' | 'all'
+
 export default function HomeworkPage() {
+  const navigate = useNavigate()
   const [items, setItems] = useState<Homework[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all')
+  const [filter, setFilter] = useState<Filter>('all')
 
   useEffect(() => {
-    async function load() {
-      try {
-        setLoading(true)
-        const data = await getHomework()
-        setItems(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Impossible de charger vos exercices.')
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
+    getHomework()
+      .then(setItems)
+      .catch(() => setError('Could not load your homework. Check your connection.'))
+      .finally(() => setLoading(false))
   }, [])
 
-  async function toggleDone(item: Homework) {
-    const nextDone = !item.done
-    // Optimistic UI update
-    setItems((prev) => prev.map((h) => (h.id === item.id ? { ...h, done: nextDone } : h)))
+  async function toggle(h: Homework) {
+    setItems((prev) => prev.map((x) => (x.id === h.id ? { ...x, done: !h.done } : x)))
     try {
-      await updateHomework(item.id, { done: nextDone })
+      await updateHomework(h.id, { done: !h.done })
     } catch {
-      // Revert on failure
-      setItems((prev) => prev.map((h) => (h.id === item.id ? { ...h, done: item.done } : h)))
+      setItems((prev) => prev.map((x) => (x.id === h.id ? { ...x, done: h.done } : x)))
+      setError("That change wasn't saved. Try again.")
     }
   }
 
-  const doneCount = items.filter((h) => h.done).length
-  const totalCount = items.length
-  const progressPercent = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
-
-  const filteredItems = items.filter((h) => {
-    if (filter === 'pending') return !h.done
-    if (filter === 'done') return h.done
-    return true
-  })
+  const done = items.filter((h) => h.done).length
+  const visible = items.filter((h) => filter === 'all' || (filter === 'done' ? h.done : !h.done))
 
   return (
-    <div className="flex flex-col gap-5 p-4">
-      {/* Header Banner */}
-      <div className="rounded-3xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-5">
-        <div className="flex items-center gap-2 text-primary">
-          <ListChecks className="size-5" />
-          <span className="text-xs font-semibold uppercase tracking-wider">Devoirs Thérapeutiques</span>
-        </div>
-        <h1 className="font-serif mt-2 text-2xl font-semibold tracking-tight text-foreground">
-          Vos exercices de la semaine
-        </h1>
-        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-          Petites étapes suggérées par votre spécialiste pour renforcer votre bien-être au quotidien.
-        </p>
+    <div className="relative min-h-svh overflow-hidden">
+      <Hero tone="lavender" />
+      <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 pt-6">
+        <TopBar
+          center={
+            <Pill>
+              <Heart className="size-4" fill="currentColor" /> From your specialist
+            </Pill>
+          }
+        />
+        <Headline eyebrow="This week's homework" title="Small steps" className="mt-3" />
 
-        {/* Progress Bar */}
-        {totalCount > 0 && (
-          <div className="mt-4 rounded-2xl bg-card/70 p-3 shadow-xs">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-foreground">Progression</span>
-              <span className="text-primary font-semibold">{doneCount} / {totalCount} terminés ({progressPercent}%)</span>
-            </div>
-            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-500"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
+        {loading ? (
+          <div className="flex flex-col gap-3">
+            <Skeleton className="mx-auto h-[38px] w-56 rounded-full" />
+            <Skeleton className="h-[108px] rounded-[26px]" />
+            <Skeleton className="h-[108px] rounded-[26px]" />
           </div>
+        ) : items.length === 0 ? (
+          <div className="mt-6 flex flex-col items-center gap-3 text-center">
+            <span className="flex size-24 items-center justify-center rounded-full bg-white shadow-[var(--shadow-card)]">
+              <Sprout className="size-10 text-teal-ink" />
+            </span>
+            <p className="text-[22px] tracking-[-0.5px]">Nothing to do this week</p>
+            <p className="max-w-[280px] text-[15px] text-sub">Your specialist will add small steps after your next session. Rest is part of the work too.</p>
+            <Cta className="mt-4" onClick={() => navigate('/patient')}>
+              Talk to Nour
+            </Cta>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-center">
+              <Pill>
+                <span className="h-1.5 w-16 overflow-hidden rounded-full bg-soft">
+                  <span className="block h-full rounded-full bg-ink" style={{ width: `${(done / items.length) * 100}%` }} />
+                </span>
+                {done} of {items.length} done
+              </Pill>
+            </div>
+            <div role="tablist" className="flex justify-center gap-2">
+              {(
+                [
+                  ['todo', 'To do'],
+                  ['done', 'Done'],
+                  ['all', 'All'],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === id}
+                  onClick={() => setFilter(id)}
+                  className={cn('h-[38px] rounded-full px-[18px] text-[14px] transition', filter === id ? 'bg-ink text-white' : 'bg-white text-ink shadow-[var(--shadow-soft)]')}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {error && <Notice tone="error">{error}</Notice>}
+            <ul className="flex flex-col gap-3">
+              {visible.map((h) => {
+                const t = CARD_TONES[items.indexOf(h) % CARD_TONES.length]
+                return (
+                  <li key={h.id} className={cn('relative overflow-hidden rounded-[26px] p-[18px] transition', h.done && 'opacity-70')} style={{ background: t.g }}>
+                    <div className="flex items-start gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className={cn('text-[20px] leading-tight tracking-[-0.4px]', h.done && 'line-through decoration-1')}>{h.title}</p>
+                        {h.description && (
+                          <p className="mt-1 text-[14px] leading-snug" style={{ color: t.c }}>
+                            {h.description}
+                          </p>
+                        )}
+                        {h.due_date && <p className="mt-2 text-[13px] text-ink-2">Due {dayLabel(h.due_date)}</p>}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void toggle(h)}
+                        aria-label={h.done ? `Mark "${h.title}" as not done` : `Mark "${h.title}" as done`}
+                        className={cn('flex size-11 shrink-0 items-center justify-center rounded-full transition', h.done ? 'bg-ink text-white' : 'bg-white/80 text-transparent hover:text-faint')}
+                      >
+                        <Check className="size-5" />
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+              {visible.length === 0 && <p className="py-6 text-center text-[14px] text-sub">{filter === 'done' ? 'Nothing ticked yet. One small step is enough.' : 'All done. Well done!'}</p>}
+            </ul>
+          </>
         )}
       </div>
-
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-2xl p-3 text-xs">
-          {error}
-        </div>
-      )}
-
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-1.5 rounded-2xl bg-muted/40 p-1">
-        <button
-          type="button"
-          onClick={() => setFilter('all')}
-          className={cn(
-            'flex-1 rounded-xl py-1.5 text-xs font-medium transition-all',
-            filter === 'all' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          Tous ({totalCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter('pending')}
-          className={cn(
-            'flex-1 rounded-xl py-1.5 text-xs font-medium transition-all',
-            filter === 'pending' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          À faire ({totalCount - doneCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter('done')}
-          className={cn(
-            'flex-1 rounded-xl py-1.5 text-xs font-medium transition-all',
-            filter === 'done' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          Terminés ({doneCount})
-        </button>
-      </div>
-
-      {/* Homework List */}
-      {loading ? (
-        <div className="flex h-32 items-center justify-center text-xs text-muted-foreground">
-          Chargement de vos exercices...
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <Card className="rounded-3xl border-dashed border-border/70 bg-card/40 p-8 text-center">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Sparkles className="size-6" />
-          </div>
-          <p className="mt-3 font-medium text-sm text-foreground">Aucun exercice pour le moment</p>
-          <p className="text-muted-foreground mt-1 text-xs">
-            Prenez soin de vous et reposez-vous cette semaine.
-          </p>
-        </Card>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {filteredItems.map((item) => (
-            <Card
-              key={item.id}
-              onClick={() => void toggleDone(item)}
-              className={cn(
-                'cursor-pointer rounded-2xl border transition-all duration-200 hover:shadow-sm',
-                item.done
-                  ? 'border-emerald-200/60 bg-emerald-50/30 opacity-75 dark:border-emerald-950 dark:bg-emerald-950/20'
-                  : 'border-border/60 bg-card/80 hover:border-primary/50'
-              )}
-            >
-              <CardContent className="flex items-start gap-3 p-4">
-                <button
-                  type="button"
-                  aria-label={item.done ? 'Marquer comme non fait' : 'Marquer comme fait'}
-                  className="mt-0.5 shrink-0 text-primary transition-transform hover:scale-110"
-                >
-                  {item.done ? (
-                    <CheckCircle2 className="size-5 text-emerald-600 fill-emerald-100 dark:fill-emerald-950" />
-                  ) : (
-                    <Circle className="size-5 text-muted-foreground/60" />
-                  )}
-                </button>
-                <div className="flex-1 space-y-1">
-                  <h3
-                    className={cn(
-                      'font-medium text-sm text-foreground leading-snug',
-                      item.done && 'line-through text-muted-foreground'
-                    )}
-                  >
-                    {item.title}
-                  </h3>
-                  {item.description && (
-                    <p className="text-muted-foreground text-xs leading-relaxed">
-                      {item.description}
-                    </p>
-                  )}
-                  {item.due_date && (
-                    <div className="mt-2 flex items-center gap-1.5 text-muted-foreground text-[11px]">
-                      <Clock className="size-3 text-primary" />
-                      <span>
-                        Pour le{' '}
-                        {new Date(item.due_date).toLocaleDateString('fr-FR', {
-                          day: 'numeric',
-                          month: 'long',
-                        })}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

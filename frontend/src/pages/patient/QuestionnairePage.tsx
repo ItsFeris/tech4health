@@ -1,325 +1,288 @@
+// PHQ-9 / GAD-7 check-ups (design: 6a question, 6b result & history).
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardCheck, History, RotateCcw, ShieldCheck } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { ArrowLeft, ArrowRight, Heart, ShieldCheck } from 'lucide-react'
 import { getQuestionnaireResults, submitQuestionnaire } from '@/api'
 import type { QuestionnaireResult, Severity } from '@/types/contract'
+import { Card, ChoiceRow, GlassCircle, Headline, Hero, Notice, Pill, Skeleton, TopBar } from '@/components/t4h/kit'
+import { dayLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-const phq9Questions = [
-  "Peu d'intérêt ou de plaisir à faire les choses",
-  "Sentiment d'être triste, déprimé(e) ou désespéré(e)",
-  "Difficultés à s'endormir, réveils fréquents ou sommeil excessif",
-  "Sentiment de fatigue inhabituelle ou manque d'énergie",
-  "Peu d'appétit ou tendance à manger excessivement",
-  "Mauvaise image de soi, sentiment d'échec ou de décevoir vos proches",
-  "Difficultés de concentration (lecture, télévision, travail)",
-  "Ralentissement dans vos mouvements/paroles, ou au contraire agitation inhabituelle",
-  "Pensées que vous seriez mieux mort(e) ou envie de vous faire du mal",
-]
+type Kind = 'phq9' | 'gad7'
 
-const gad7Questions = [
-  "Sentiment de nervosité, d'anxiété ou d'être sur le qui-vive",
-  "Incapacité à arrêter de vous inquiéter ou à contrôler vos craintes",
-  "Inquiétude excessive concernant différents aspects de votre vie",
-  "Difficulté prononcée à vous détendre",
-  "Agitation telle qu'il vous est difficile de rester en place",
-  "Tendance à vous énerver ou à devenir irritable très facilement",
-  "Sentiment de peur soudaine, comme si quelque chose de terrible allait arriver",
-]
-
-const options = [
-  { value: 0, label: 'Jamais', desc: 'Pas du tout ces 2 dernières semaines' },
-  { value: 1, label: 'Plusieurs jours', desc: 'De temps en temps' },
-  { value: 2, label: 'Plus de la moitié du temps', desc: 'Fréquemment' },
-  { value: 3, label: 'Presque tous les jours', desc: 'Quasiment quotidiennement' },
-]
-
-const severityLabels: Record<Severity, { label: string; color: string; desc: string }> = {
-  minimal: { label: 'Ressenti léger / Équilibré', color: 'text-emerald-600 bg-emerald-50 border-emerald-200', desc: 'Vos réponses indiquent un bon équilibre émotionnel global.' },
-  mild: { label: 'Tension légère', color: 'text-teal-600 bg-teal-50 border-teal-200', desc: 'Quelques moments de fatigue ou de stress passagers.' },
-  moderate: { label: 'Charge émotionnelle modérée', color: 'text-amber-600 bg-amber-50 border-amber-200', desc: 'Un niveau d\'inconfort qui mérite une attention bienveillante et des exercices de relaxation.' },
-  moderately_severe: { label: 'Charge importante', color: 'text-orange-600 bg-orange-50 border-orange-200', desc: 'Un épisode exigeant. Votre spécialiste est là pour vous accompagner.' },
-  severe: { label: 'Soutien prioritaire recommandé', color: 'text-rose-600 bg-rose-50 border-rose-200', desc: 'Votre bien-être est notre priorité absolue. N\'hésitez pas à solliciter de l\'aide dès maintenant.' },
+// Standard PHQ-9 and GAD-7 items (free to use).
+const QUESTIONS: Record<Kind, string[]> = {
+  phq9: [
+    'Little interest or pleasure in doing things',
+    'Feeling down, depressed or hopeless',
+    'Trouble falling or staying asleep, or sleeping too much',
+    'Feeling tired or having little energy',
+    'Poor appetite or overeating',
+    'Feeling bad about yourself, or that you are a failure or have let yourself or your family down',
+    'Trouble concentrating on things, such as reading or watching TV',
+    'Moving or speaking so slowly that others could notice, or being so restless that you move around a lot more than usual',
+    'Thoughts that you would be better off dead, or of hurting yourself',
+  ],
+  gad7: [
+    'Feeling nervous, anxious or on edge',
+    'Not being able to stop or control worrying',
+    'Worrying too much about different things',
+    'Trouble relaxing',
+    'Being so restless that it is hard to sit still',
+    'Becoming easily annoyed or irritable',
+    'Feeling afraid, as if something awful might happen',
+  ],
+}
+const OPTIONS = ['Not at all', 'Several days', 'More than half the days', 'Nearly every day']
+const META: Record<Kind, { name: string; short: string; max: number; word: string; color: string; gradient: string }> = {
+  phq9: { name: 'Mood check-up', short: 'PHQ-9', max: 27, word: 'Mood', color: '#6A5BBE', gradient: 'linear-gradient(140deg, #DDD8FF 0%, #ECE4F8 100%)' },
+  gad7: { name: 'Worry check-up', short: 'GAD-7', max: 21, word: 'Worry', color: '#3A8C9F', gradient: 'linear-gradient(140deg, #CBECF5 0%, #D9F0EA 100%)' },
+}
+const TITLE: Record<Severity, string> = {
+  minimal: 'A light stretch',
+  mild: 'A mixed stretch',
+  moderate: 'A heavy stretch',
+  moderately_severe: 'A very heavy stretch',
+  severe: 'A very heavy stretch',
+}
+const BODY: Record<Severity, string> = {
+  minimal: 'Your answers say things have felt mostly manageable lately. Keep doing what helps.',
+  mild: 'Your answers say some days have been harder than others. Small steps and talking it through can help.',
+  moderate: 'Your answers say things have felt heavy lately. This is not a diagnosis. It helps your specialist know how to support you.',
+  moderately_severe: 'Your answers say things have felt very heavy lately. You are not alone in this: your specialist will see it and support you.',
+  severe: 'Your answers say things have felt very heavy lately. You are not alone in this: your specialist will see it and support you soon.',
 }
 
 export default function QuestionnairePage() {
   const navigate = useNavigate()
-
   const [history, setHistory] = useState<QuestionnaireResult[]>([])
-  const [loadingHistory, setLoadingHistory] = useState(true)
-
-  // Test mode: 'choice' | 'testing' | 'result'
-  const [mode, setMode] = useState<'choice' | 'testing' | 'result'>('choice')
-  const [kind, setKind] = useState<'phq9' | 'gad7'>('phq9')
-  const [currentIdx, setCurrentIdx] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [historyError, setHistoryError] = useState(false)
+  const [mode, setMode] = useState<'choose' | 'testing' | 'result'>('choose')
+  const [kind, setKind] = useState<Kind>('phq9')
+  const [idx, setIdx] = useState(0)
   const [answers, setAnswers] = useState<number[]>([])
   const [submitting, setSubmitting] = useState(false)
-  const [latestResult, setLatestResult] = useState<QuestionnaireResult | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [result, setResult] = useState<QuestionnaireResult | null>(null)
 
-  useEffect(() => {
-    loadPastResults()
-  }, [])
-
-  async function loadPastResults() {
-    try {
-      setLoadingHistory(true)
-      const data = await getQuestionnaireResults()
-      setHistory(data)
-    } catch {
-      // Ignore
-    } finally {
-      setLoadingHistory(false)
-    }
+  function loadHistory() {
+    setLoading(true)
+    setHistoryError(false)
+    getQuestionnaireResults()
+      .then(setHistory)
+      .catch(() => setHistoryError(true))
+      .finally(() => setLoading(false))
   }
+  useEffect(loadHistory, [])
 
-  function startTest(selectedKind: 'phq9' | 'gad7') {
-    setKind(selectedKind)
-    setAnswers(new Array(selectedKind === 'phq9' ? 9 : 7).fill(-1))
-    setCurrentIdx(0)
+  function start(k: Kind) {
+    setKind(k)
+    setAnswers(new Array(QUESTIONS[k].length).fill(-1))
+    setIdx(0)
+    setSubmitError(null)
     setMode('testing')
   }
 
-  async function handleOptionSelect(value: number) {
-    const nextAnswers = [...answers]
-    nextAnswers[currentIdx] = value
-    setAnswers(nextAnswers)
-
-    const questions = kind === 'phq9' ? phq9Questions : gad7Questions
-    if (currentIdx < questions.length - 1) {
-      setCurrentIdx((prev) => prev + 1)
-    } else {
-      // Final submission
-      setSubmitting(true)
-      try {
-        const reply = await submitQuestionnaire(kind, nextAnswers)
-        setLatestResult(reply.result)
-        setHistory((prev) => [reply.result, ...prev])
-
-        if (reply.crisis) {
-          navigate('/patient/crisis', { state: { crisis: reply.crisis } })
-          return
-        }
-
-        setMode('result')
-      } catch (err) {
-        alert(err instanceof Error ? err.message : 'Erreur lors de la validation.')
-      } finally {
-        setSubmitting(false)
+  async function nextStep() {
+    if (answers[idx] < 0) return
+    if (idx < QUESTIONS[kind].length - 1) {
+      setIdx(idx + 1)
+      return
+    }
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const r = await submitQuestionnaire(kind, answers)
+      setHistory((h) => [...h, r.result])
+      setResult(r.result)
+      if (r.crisis) {
+        navigate('/patient/crisis', { state: { crisis: r.crisis } })
+        return
       }
+      setMode('result')
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : 'Your answers could not be sent.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  const questions = kind === 'phq9' ? phq9Questions : gad7Questions
-  const progressPercent = Math.round(((currentIdx + 1) / questions.length) * 100)
+  const sorted = [...history].sort((a, b) => b.created_at.localeCompare(a.created_at))
 
-  return (
-    <div className="flex flex-col gap-5 p-4">
-      {/* Header Banner */}
-      <div className="rounded-3xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-5">
-        <div className="flex items-center gap-2 text-primary">
-          <ClipboardCheck className="size-5" />
-          <span className="text-xs font-semibold uppercase tracking-wider">Bilan de Bien-Être</span>
-        </div>
-        <h1 className="font-serif mt-2 text-2xl font-semibold tracking-tight text-foreground">
-          Auto-évaluation clinique
-        </h1>
-        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-          Questionnaires validés scientifiquement (PHQ-9 et GAD-7) pour suivre votre évolution sans aucun jugement.
-        </p>
-      </div>
-
-      {/* MODE 1: Choice Screen */}
-      {mode === 'choice' && (
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 gap-3">
-            <Card
-              onClick={() => startTest('phq9')}
-              className="cursor-pointer rounded-2xl border border-border/70 bg-card/80 p-5 transition-all hover:border-primary hover:shadow-md"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                    9 questions · ~3 min
-                  </span>
-                  <h3 className="font-serif mt-2 text-lg font-semibold text-foreground">Échelle PHQ-9 (Humeur & Énergie)</h3>
-                  <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                    Évalue votre niveau de vitalité, de motivation et de moral au cours des deux dernières semaines.
-                  </p>
-                </div>
-                <ArrowRight className="text-primary size-5 shrink-0" />
-              </div>
-            </Card>
-
-            <Card
-              onClick={() => startTest('gad7')}
-              className="cursor-pointer rounded-2xl border border-border/70 bg-card/80 p-5 transition-all hover:border-primary hover:shadow-md"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <span className="rounded-full bg-teal-500/10 px-2.5 py-1 text-[11px] font-semibold text-teal-700 dark:text-teal-300">
-                    7 questions · ~2 min
-                  </span>
-                  <h3 className="font-serif mt-2 text-lg font-semibold text-foreground">Échelle GAD-7 (Anxiété & Sérénité)</h3>
-                  <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                    Mesure l'intensité du stress, de la nervosité et des tensions intérieures récentes.
-                  </p>
-                </div>
-                <ArrowRight className="text-teal-600 size-5 shrink-0" />
-              </div>
-            </Card>
+  if (mode === 'testing') {
+    const qs = QUESTIONS[kind]
+    return (
+      <div className="relative min-h-svh overflow-hidden">
+        <Hero tone="sky" />
+        <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 pt-6">
+          <TopBar
+            left={
+              <GlassCircle aria-label="Leave the check-up" onClick={() => setMode('choose')}>
+                <ArrowLeft className="size-5" />
+              </GlassCircle>
+            }
+            center={
+              <Pill>
+                <Heart className="size-4" fill="currentColor" /> {META[kind].name} · {META[kind].short}
+              </Pill>
+            }
+          />
+          <div className="mt-3 flex items-center gap-3">
+            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white">
+              <span className="block h-full rounded-full bg-ink transition-all" style={{ width: `${((idx + 1) / qs.length) * 100}%` }} />
+            </span>
+            <span className="text-[13px] text-ink-2">
+              {idx + 1} of {qs.length}
+            </span>
           </div>
-
-          {/* Past Results */}
-          <div className="mt-3">
-            <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-foreground">
-              <History className="size-4 text-primary" />
-              <span>Vos bilans précédents</span>
-            </div>
-
-            {loadingHistory ? (
-              <p className="text-muted-foreground text-xs">Chargement...</p>
-            ) : history.length === 0 ? (
-              <p className="text-muted-foreground rounded-2xl border border-dashed p-4 text-center text-xs">
-                Aucun bilan enregistré. Choisissez un questionnaire ci-dessus pour débuter !
-              </p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {history.slice(0, 5).map((item) => {
-                  const sInfo = severityLabels[item.severity]
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between rounded-xl border bg-card p-3 text-xs"
-                    >
-                      <div>
-                        <span className="font-semibold uppercase text-primary text-[10px]">
-                          {item.kind.toUpperCase()}
-                        </span>
-                        <p className="text-muted-foreground text-[11px]">
-                          {new Date(item.created_at).toLocaleDateString('fr-FR', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <span className={cn('rounded-full border px-2.5 py-0.5 text-[11px] font-medium', sInfo.color)}>
-                          {sInfo.label}
-                        </span>
-                        <p className="text-muted-foreground text-[10px] mt-0.5">Score : {item.score} pts</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* MODE 2: Taking the test (One question at a time) */}
-      {mode === 'testing' && (
-        <div className="flex flex-col gap-5">
-          {/* Progress Indicator */}
-          <div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground font-medium">
-                Question {currentIdx + 1} sur {questions.length}
-              </span>
-              <span className="text-primary font-semibold">{progressPercent}%</span>
-            </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Question Card */}
-          <Card className="rounded-3xl border-border/70 bg-card p-6 shadow-sm">
-            <span className="text-muted-foreground text-xs uppercase tracking-wide">Ces 2 dernières semaines :</span>
-            <h2 className="font-serif mt-2 text-xl font-semibold leading-relaxed text-foreground">
-              {questions[currentIdx]}
-            </h2>
-          </Card>
-
-          {/* Answers */}
-          <div className="flex flex-col gap-2.5">
-            {options.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                disabled={submitting}
-                onClick={() => void handleOptionSelect(opt.value)}
-                className="flex items-center justify-between rounded-2xl border border-border/70 bg-card/90 p-4 text-left transition-all hover:border-primary hover:bg-primary/5 hover:scale-[1.01]"
-              >
-                <div>
-                  <p className="font-medium text-sm text-foreground">{opt.label}</p>
-                  <p className="text-muted-foreground text-xs">{opt.desc}</p>
-                </div>
-                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted/60 text-xs text-muted-foreground font-semibold">
-                  {opt.value}
-                </div>
-              </button>
+          <Headline eyebrow="Over the last 2 weeks, how often have you been bothered by…" title={qs[idx]} size="md" className="mt-4 [&_h1]:text-[28px] [&_h1]:leading-[1.12] [&_p]:mx-auto [&_p]:max-w-[260px]" />
+          <div role="radiogroup" aria-label="Answer" className="mt-3 flex flex-col gap-2.5">
+            {OPTIONS.map((o, v) => (
+              <ChoiceRow key={o} on={answers[idx] === v} onClick={() => setAnswers((a) => a.map((x, i) => (i === idx ? v : x)))} label={o} />
             ))}
           </div>
-
-          {/* Back button */}
-          <div className="flex items-center justify-between pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="rounded-xl"
-              onClick={() => {
-                if (currentIdx > 0) setCurrentIdx((prev) => prev - 1)
-                else setMode('choice')
-              }}
+          <p className="text-center text-[13px] text-sub">There are no right or wrong answers.</p>
+          {submitError && <Notice tone="error">{submitError} Your answers are kept: press the arrow to try again.</Notice>}
+          <div className="flex justify-center gap-3">
+            <button type="button" aria-label="Previous question" disabled={idx === 0} onClick={() => setIdx(idx - 1)} className="flex size-[52px] items-center justify-center rounded-full bg-white shadow-[var(--shadow-float)] disabled:opacity-40">
+              <ArrowLeft className="size-5" />
+            </button>
+            <button
+              type="button"
+              aria-label={idx === qs.length - 1 ? 'Finish' : 'Next question'}
+              disabled={answers[idx] < 0 || submitting}
+              onClick={() => void nextStep()}
+              className="flex size-[52px] items-center justify-center rounded-full bg-ink text-white disabled:opacity-40"
             >
-              <ArrowLeft className="mr-1 size-4" /> {currentIdx > 0 ? 'Question précédente' : 'Annuler'}
-            </Button>
+              <ArrowRight className="size-5" />
+            </button>
           </div>
         </div>
-      )}
+      </div>
+    )
+  }
 
-      {/* MODE 3: Results Display */}
-      {mode === 'result' && latestResult && (
-        <div className="flex flex-col items-center gap-5 text-center">
-          <div className="flex size-16 items-center justify-center rounded-full bg-primary/15 text-primary">
-            <CheckCircle2 className="size-8" />
+  if (mode === 'result' && result) {
+    const meta = META[result.kind]
+    const prev = sorted.filter((r) => r.kind === result.kind && r.id !== result.id)[0]
+    const other = sorted.find((r) => r.kind !== result.kind)
+    const diff = prev ? result.score - prev.score : null
+    return (
+      <div className="relative min-h-svh overflow-hidden">
+        <Hero tone="pink" variant="flower" />
+        <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 pt-6">
+          <TopBar
+            left={
+              <GlassCircle aria-label="Back to check-ups" onClick={() => setMode('choose')}>
+                <ArrowLeft className="size-5" />
+              </GlassCircle>
+            }
+            center={
+              <Pill>
+                <ShieldCheck className="size-4" fill="currentColor" stroke="white" /> Shared with specialist
+              </Pill>
+            }
+          />
+          <Headline eyebrow="Check-up complete · thank you" title={TITLE[result.severity]} className="mt-8" />
+          <span className="mx-auto flex size-[60px] items-center justify-center rounded-full bg-white shadow-[var(--shadow-card)]">
+            <ShieldCheck className="size-6" fill="currentColor" stroke="white" />
+          </span>
+          <p className="text-center text-[15.5px] leading-relaxed text-ink-2">{BODY[result.severity]}</p>
+          <div className="grid grid-cols-2 gap-y-5 px-1">
+            <Stat value={result.score} max={meta.max} label={`${meta.word} · today`} color={meta.color} />
+            {other ? <Stat value={other.score} max={META[other.kind].max} label={`${META[other.kind].word} · ${dayLabel(other.created_at)}`} color={META[other.kind].color} /> : <span />}
+            {diff !== null && <Stat value={diff > 0 ? `+${diff}` : diff === 0 ? '0' : `−${Math.abs(diff)}`} label={diff < 0 ? `Lighter than ${dayLabel(prev!.created_at)}` : diff > 0 ? `Heavier than ${dayLabel(prev!.created_at)}` : 'Same as last time'} />}
+            <Stat value={history.length} label="Check-ups so far" />
           </div>
-
-          <div>
-            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary uppercase">
-              Bilan {latestResult.kind.toUpperCase()} complété
-            </span>
-            <h2 className="font-serif mt-3 text-2xl font-bold text-foreground">
-              {severityLabels[latestResult.severity].label}
-            </h2>
-            <p className="text-muted-foreground mt-2 text-xs leading-relaxed max-w-xs mx-auto">
-              {severityLabels[latestResult.severity].desc}
-            </p>
-          </div>
-
-          <div className="w-full rounded-2xl border border-border/60 bg-card p-4 text-xs text-muted-foreground leading-relaxed">
-            <ShieldCheck className="mx-auto mb-1.5 size-5 text-primary" />
-            <p>
-              Ce bilan constitue un indicateur indicatif pour votre suivi. Il ne remplace pas une consultation et ne pose aucun diagnostic.
-            </p>
-          </div>
-
-          <Button
-            size="lg"
-            className="w-full rounded-2xl shadow-md"
-            onClick={() => setMode('choice')}
-          >
-            <RotateCcw className="mr-2 size-4" /> Retour aux bilans
-          </Button>
+          <HistoryCard items={sorted} />
         </div>
-      )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative min-h-svh overflow-hidden">
+      <Hero tone="sky" />
+      <div className="relative z-10 flex flex-col gap-4 px-5 pb-6 pt-6">
+        <TopBar
+          center={
+            <Pill>
+              <Heart className="size-4" fill="currentColor" /> Check-ups
+            </Pill>
+          }
+        />
+        <Headline eyebrow="Two minutes, every two weeks" title="How have things felt lately?" className="mt-3" />
+        <div className="mt-2 flex flex-col gap-3">
+          {(['phq9', 'gad7'] as Kind[]).map((k) => (
+            <button key={k} type="button" onClick={() => start(k)} className="flex items-center justify-between rounded-[26px] p-5 text-left shadow-[var(--shadow-soft)]" style={{ background: META[k].gradient }}>
+              <span>
+                <span className="block text-[22px] leading-tight tracking-[-0.5px]">{META[k].name}</span>
+                <span className="block text-[14px]" style={{ color: META[k].color }}>
+                  {META[k].short} · {QUESTIONS[k].length} questions · 2 min
+                </span>
+              </span>
+              <span className="flex size-11 items-center justify-center rounded-full bg-ink text-white">
+                <ArrowRight className="size-5" />
+              </span>
+            </button>
+          ))}
+        </div>
+        {loading ? (
+          <Skeleton className="h-40 rounded-[28px]" />
+        ) : historyError ? (
+          <Notice tone="error" action={<button type="button" onClick={loadHistory} className="text-[13px] underline">Retry</button>}>
+            Could not load your past check-ups.
+          </Notice>
+        ) : (
+          <HistoryCard items={sorted} />
+        )}
+      </div>
     </div>
+  )
+}
+
+function Stat({ value, max, label, color }: { value: number | string; max?: number; label: string; color?: string }) {
+  return (
+    <div>
+      <p className="flex items-baseline gap-1.5">
+        <span className="text-[34px] leading-none tracking-[-1.2px]">{value}</span>
+        {max && (
+          <span className="text-[14px]" style={{ color }}>
+            / {max}
+          </span>
+        )}
+      </p>
+      <p className="mt-1 text-[14px]" style={{ color: color ?? '#55575E' }}>
+        {label}
+      </p>
+    </div>
+  )
+}
+
+function HistoryCard({ items }: { items: QuestionnaireResult[] }) {
+  return (
+    <Card>
+      <p className="text-[16px]">History</p>
+      {items.length === 0 ? (
+        <p className="mt-3 text-[14px] text-sub">No check-ups yet. Your first one will appear here.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-line">
+          {items.slice(0, 8).map((h) => (
+            <li key={h.id} className="flex items-center gap-3 py-3 text-[14px]">
+              <span className="w-14 font-medium" style={{ color: META[h.kind].color }}>
+                {META[h.kind].short}
+              </span>
+              <span className={cn('flex-1 capitalize text-ink-2')}>{h.severity.replace('_', ' ')}</span>
+              <span className="text-[12.5px] text-sub">{dayLabel(h.created_at)}</span>
+              <span className="w-12 text-right">
+                {h.score}
+                <span className="text-sub">/{META[h.kind].max}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   )
 }

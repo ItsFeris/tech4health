@@ -1,6 +1,6 @@
 # Tech4Health — Locked design spec (team contract)
 
-Version 1.1 · frozen Nov 21, 2026 (1.1: team cut to 3 people) · source doc: https://claude.ai/artifact/XyrztKDxje9S6nP8ZJWQbW
+Version 1.2 · frozen Nov 22, 2026 (1.1: team cut to 3 people · 1.2: Dhia builds all screens from the design) · source doc: https://claude.ai/artifact/XyrztKDxje9S6nP8ZJWQbW
 
 ## 1. Lock rules
 
@@ -29,8 +29,10 @@ Three people: Dhia owns everything that can break silently (database, security, 
 | Role | Name | Owns (folders) | Delivers |
 | --- | --- | --- | --- |
 | Lead + backend | Dhia | `backend/`, `supabase/`, `frontend/src/api/`, `frontend/src/types/`, `frontend/src/mocks/`, the frontend skeleton | Supabase tables and access rules, FastAPI, Groq wrapper, chat, weekly summary, risk engine, alerts, emails, connecting the frontend to the real API, reviewing and merging every PR |
-| A — Patient app | TBD | `frontend/src/pages/patient/` | Login, onboarding, chat screen, daily check-in, homework list, PHQ-9 form, SOS button, crisis screen, patient-side demo flow |
-| B — Specialist side + content | TBD | `frontend/src/pages/specialist/`, `docs/` | Patient list, alerts inbox, weekly summary page, assign homework, mood chart; AI system prompt (darija/French), summary prompt, crisis keyword list, crisis screen text, fake demo patients, demo script, slides |
+| A — Patient app testing | TBD | small fixes in `frontend/src/pages/patient/` with Dhia's OK | Tests the patient app on real phones, reports bugs, rehearses the patient side of the demo |
+| B — Content | TBD | `docs/`, prompts, keywords, `supabase/seed.sql` | AI system prompt (darija/French), summary prompt, crisis keyword list, crisis screen text, fake demo patients, demo script, slides |
+
+Since v1.2, Dhia builds all 15 screens from the Claude Design file: https://claude.ai/artifact/5jNb1t3kYf15GJuWdwRQFy. The shared look is in `frontend/src/components/t4h/`.
 
 Before A and B start, Dhia sets up in about 1 to 2 hours: the React + Vite + Tailwind + shadcn/ui skeleton with routing, a login page and an empty layout for each side; `contract.ts` and one typed mock file per type; and `src/api/` functions such as `getPatients()` and `sendChat()` that return mocks for now. Later Dhia switches those functions to the real backend without touching any page.
 

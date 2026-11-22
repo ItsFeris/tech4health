@@ -37,12 +37,12 @@ export default function App() {
           <Route path="/patient/onboarding" element={<PatientOnboardingPage />} />
           <Route element={<RequireRole role="patient" />}>
             <Route path="/patient/crisis" element={<CrisisPage />} />
+            <Route path="/patient/sos" element={<SosPage />} />
             <Route path="/patient" element={<PatientLayout />}>
               <Route index element={<ChatPage />} />
               <Route path="checkin" element={<CheckinPage />} />
               <Route path="homework" element={<HomeworkPage />} />
               <Route path="questionnaire" element={<QuestionnairePage />} />
-              <Route path="sos" element={<SosPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>

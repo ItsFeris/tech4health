@@ -1,231 +1,143 @@
+// Settings (design: 9 · Settings).
 import { useEffect, useState } from 'react'
-import { Calendar, Check, Globe, Lock, LogOut, ShieldCheck, User } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { LogOut, Phone, Settings } from 'lucide-react'
 import { getAppointments, updateConsent } from '@/api'
 import { useAuth } from '@/auth/AuthContext'
-import type { Appointment, Consent } from '@/types/contract'
+import type { Appointment, Consent, Lang } from '@/types/contract'
+import { Card, Headline, Hero, Notice, Pill, SectionLabel, Skeleton, TopBar } from '@/components/t4h/kit'
+import { dayLabel, timeLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
+
+const LANGS: { id: Lang; label: string }[] = [
+  { id: 'darija', label: 'Tounsi' },
+  { id: 'ar', label: 'العربية' },
+  { id: 'fr', label: 'Français' },
+  { id: 'en', label: 'English' },
+]
 
 export default function SettingsPage() {
   const { me, refresh, logout } = useAuth()
-  const [appointments, setAppointments] = useState<Appointment[]>([])
   const [consent, setConsent] = useState<Consent>(me?.consent ?? 'summary_only')
-  const [savingConsent, setSavingConsent] = useState(false)
-  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [appointments, setAppointments] = useState<Appointment[] | null>(null)
+  const [apptError, setApptError] = useState(false)
 
   useEffect(() => {
-    async function load() {
-      try {
-        const data = await getAppointments()
-        setAppointments(data)
-      } catch {
-        // Ignore
-      }
-    }
-    load()
+    getAppointments()
+      .then(setAppointments)
+      .catch(() => setApptError(true))
   }, [])
 
-  async function handleConsentChange(nextConsent: Consent) {
-    if (nextConsent === consent || savingConsent) return
-    setSavingConsent(true)
-    setSuccessMsg(null)
+  async function toggleConsent() {
+    const next: Consent = consent === 'full_chat' ? 'summary_only' : 'full_chat'
+    setSaving(true)
+    setError(null)
+    setConsent(next)
     try {
-      await updateConsent(nextConsent)
-      setConsent(nextConsent)
+      await updateConsent(next)
       await refresh()
-      setSuccessMsg('Vos préférences de partage ont été mises à jour.')
-      setTimeout(() => setSuccessMsg(null), 3500)
     } catch {
-      // Ignore
+      setConsent(consent)
+      setError("Your choice wasn't saved. Nothing changed, try again.")
     } finally {
-      setSavingConsent(false)
+      setSaving(false)
     }
   }
 
-  const langNames = {
-    darija: 'Tounsi / Darija 🇹🇳',
-    fr: 'Français 🇫🇷',
-    ar: 'العربية 🌙',
-    en: 'English 🇬🇧',
-  }
+  const now = new Date().toISOString()
+  const upcoming = (appointments ?? []).filter((a) => a.status === 'scheduled' && a.starts_at >= now).sort((a, b) => a.starts_at.localeCompare(b.starts_at)).slice(0, 2)
+  const full = consent === 'full_chat'
 
   return (
-    <div className="flex flex-col gap-5 p-4">
-      {/* Header */}
-      <div className="rounded-3xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-5">
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">
-          Paramètres & Confidentialité
-        </h1>
-        <p className="text-muted-foreground mt-1 text-xs">
-          Gérez votre profil, vos préférences de langue et le partage avec votre médecin.
-        </p>
-      </div>
+    <div className="relative min-h-svh overflow-hidden">
+      <Hero tone="lavender" />
+      <div className="relative z-10 flex flex-col gap-3.5 px-5 pb-6 pt-6">
+        <TopBar
+          center={
+            <Pill>
+              <Settings className="size-4" /> Settings
+            </Pill>
+          }
+        />
+        <Headline eyebrow="Your space" title={me?.nickname ?? ''} className="mb-3 mt-6" />
 
-      {successMsg && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
-          {successMsg}
-        </div>
-      )}
-
-      {/* Profile Card */}
-      <Card className="rounded-3xl border-border/70 bg-card/80 shadow-xs">
-        <CardContent className="space-y-4 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-              <User className="size-6" />
-            </div>
-            <div>
-              <p className="font-semibold text-base text-foreground">{me?.nickname ?? 'Patient'}</p>
-              <p className="text-muted-foreground text-xs">Compte Patient Sécurisé</p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between border-t pt-3 text-xs">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Globe className="size-4 text-primary" />
-              <span>Langue actuelle</span>
-            </div>
-            <span className="font-medium text-foreground">
-              {me?.language ? langNames[me.language] : 'Tounsi 🇹🇳'}
-            </span>
-          </div>
-
-          {me?.emergency_name && (
-            <div className="flex items-center justify-between border-t pt-3 text-xs">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <ShieldCheck className="size-4 text-primary" />
-                <span>Contact de confiance</span>
-              </div>
-              <span className="font-medium text-foreground">{me.emergency_name}</span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Consent / Privacy settings */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-          <Lock className="size-4 text-primary" />
-          <span>Partage avec votre spécialiste</span>
-        </div>
-
-        <div className="space-y-2.5">
-          <button
-            type="button"
-            disabled={savingConsent}
-            onClick={() => void handleConsentChange('summary_only')}
-            className={cn(
-              'flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-all',
-              consent === 'summary_only'
-                ? 'border-primary bg-primary/10 ring-1 ring-primary'
-                : 'border-border/60 bg-card hover:border-primary/40'
-            )}
-          >
-            <div
-              className={cn(
-                'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border',
-                consent === 'summary_only'
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-muted-foreground'
-              )}
-            >
-              {consent === 'summary_only' && <Check className="size-3" />}
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <p className="font-medium text-sm text-foreground">Résumé uniquement</p>
-                <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                  Recommandé
-                </span>
-              </div>
-              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                Votre médecin ne lit que la synthèse hebdomadaire rédigée par l'IA. Vos conversations détaillées restent strictement privées.
-              </p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            disabled={savingConsent}
-            onClick={() => void handleConsentChange('full_chat')}
-            className={cn(
-              'flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-all',
-              consent === 'full_chat'
-                ? 'border-primary bg-primary/10 ring-1 ring-primary'
-                : 'border-border/60 bg-card hover:border-primary/40'
-            )}
-          >
-            <div
-              className={cn(
-                'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border',
-                consent === 'full_chat'
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-muted-foreground'
-              )}
-            >
-              {consent === 'full_chat' && <Check className="size-3" />}
-            </div>
-            <div>
-              <p className="font-medium text-sm text-foreground">Accès complet au chat</p>
-              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                Votre spécialiste peut consulter l'ensemble des échanges pour une analyse approfondie.
-              </p>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* Appointments List */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-          <Calendar className="size-4 text-primary" />
-          <span>Vos consultations</span>
-        </div>
-
-        {appointments.length === 0 ? (
-          <p className="text-muted-foreground rounded-2xl border border-dashed p-4 text-center text-xs">
-            Aucun rendez-vous planifié pour le moment.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {appointments.map((a) => (
-              <div key={a.id} className="flex items-center justify-between rounded-2xl border bg-card p-3 text-xs">
-                <div>
-                  <p className="font-medium text-foreground">Consultation {a.type === 'urgent' ? 'Prioritaire' : 'Hebdomadaire'}</p>
-                  <p className="text-muted-foreground text-[11px]">
-                    {new Date(a.starts_at).toLocaleDateString('fr-FR', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    'rounded-full px-2.5 py-0.5 text-[10px] font-semibold',
-                    a.status === 'scheduled' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                  )}
-                >
-                  {a.status === 'scheduled' ? 'Confirmé' : a.status}
-                </span>
-              </div>
+        <Card>
+          <SectionLabel>Language</SectionLabel>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {LANGS.map((l) => (
+              <span key={l.id} lang={l.id === 'ar' ? 'ar' : undefined} className={cn('flex h-10 items-center rounded-full px-4 text-[14px]', me?.language === l.id ? 'bg-ink text-white' : 'bg-soft text-faint')}>
+                {l.label}
+              </span>
             ))}
           </div>
-        )}
-      </div>
+          <p className="mt-2.5 text-[12.5px] text-sub">Nour talks to you in this language. To change it, ask your specialist.</p>
+        </Card>
 
-      {/* Logout */}
-      <Button
-        variant="outline"
-        size="lg"
-        onClick={() => void logout()}
-        className="mt-2 w-full rounded-2xl text-destructive hover:bg-destructive/10"
-      >
-        <LogOut className="mr-2 size-4" /> Se déconnecter
-      </Button>
+        <Card>
+          <SectionLabel>Privacy</SectionLabel>
+          <div className="mt-3 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[16px]">Let my specialist read my full chat</p>
+              <p className="text-[13px] text-sub">{full ? 'On · they can read your chat with Nour' : 'Off · they only see summaries'}</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={full}
+              aria-label="Let my specialist read my full chat"
+              disabled={saving}
+              onClick={() => void toggleConsent()}
+              className={cn('relative h-8 w-[52px] shrink-0 rounded-full transition', full ? 'bg-ink' : 'bg-line')}
+            >
+              <span className={cn('absolute top-1 size-6 rounded-full bg-white shadow transition-all', full ? 'left-[24px]' : 'left-1')} />
+            </button>
+          </div>
+          <Notice className="mt-4 py-3 text-[13px]" icon={<span />}>
+            Messages that suggest you may be in danger are always shared, whatever you choose here.
+          </Notice>
+          {error && (
+            <Notice tone="error" className="mt-3">
+              {error}
+            </Notice>
+          )}
+        </Card>
+
+        <Card>
+          <SectionLabel>Upcoming sessions</SectionLabel>
+          {appointments === null && !apptError ? (
+            <Skeleton className="mt-3 h-28 rounded-[22px]" />
+          ) : apptError ? (
+            <p className="mt-3 text-[14px] text-sos">Could not load your sessions.</p>
+          ) : upcoming.length === 0 ? (
+            <p className="mt-3 text-[14px] text-sub">No session booked yet.</p>
+          ) : (
+            <div className="mt-3 grid grid-cols-2 gap-2.5">
+              {upcoming.map((a, i) => (
+                <div key={a.id} className="rounded-[22px] p-3.5" style={{ background: i === 0 ? 'linear-gradient(140deg, #CBECF5 0%, #D9F0EA 100%)' : 'linear-gradient(140deg, #DDD8FF 0%, #ECE4F8 100%)' }}>
+                  <p className="text-[16px] leading-tight">{dayLabel(a.starts_at)}</p>
+                  <p className={cn('text-[16px] leading-tight', i === 0 ? 'text-teal-ink' : 'text-lav-ink')}>{a.type === 'urgent' ? 'earlier slot' : 'weekly'}</p>
+                  <p className="mt-3 text-[30px] leading-none tracking-[-1px]">{timeLabel(a.starts_at)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card className="flex items-center gap-3.5 py-4">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-soft">
+            <Phone className="size-[18px]" fill="currentColor" />
+          </span>
+          <div className="min-w-0">
+            <SectionLabel>Emergency contact</SectionLabel>
+            <p className="truncate text-[16px]">{me?.emergency_name || 'Not added yet'}</p>
+          </div>
+        </Card>
+
+        <button type="button" onClick={() => void logout()} className="flex h-[52px] items-center justify-center gap-2 rounded-full border border-line bg-white text-[15px] text-sos">
+          <LogOut className="size-4" /> Log out
+        </button>
+      </div>
     </div>
   )
 }

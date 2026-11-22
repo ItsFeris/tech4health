@@ -57,7 +57,7 @@ def _seed() -> None:
     for pid, moods in [(PATIENT_A_ID, [3, 4, 4, 3, 4, 4, 5]), (PATIENT_B_ID, [4, 3, 3, 2, 2, 1, 2]), (PATIENT_C_ID, [3, 3, 2, 3, 4, 3, 3])]:
         for i, m in enumerate(moods):
             cid = new_id()
-            checkins[cid] = {"id": cid, "patient_id": pid, "mood": m, "note": None, "created_at": days_from_now(i - 6, 20)}
+            checkins[cid] = {"id": cid, "patient_id": pid, "mood": m, "note": None, "created_at": days_from_now(i - 7, 20)}
     alert_id = new_id()
     alerts[alert_id] = {
         "id": alert_id, "patient_id": PATIENT_B_ID, "specialist_id": SPECIALIST_ID, "level": "orange", "source": "trend",

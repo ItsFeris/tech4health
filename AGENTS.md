@@ -14,9 +14,12 @@ Ask the user which role they have, unless the git branch already tells you
 
 | Role | Person | You may edit ONLY | Never edit |
 | --- | --- | --- | --- |
-| Lead + backend | Dhia | everything | — |
-| A — Patient app | teammate A | `frontend/src/pages/patient/`, new files in `frontend/src/components/` | everything else |
-| B — Specialist side + content | teammate B | `frontend/src/pages/specialist/`, new files in `frontend/src/components/`, `docs/`, `backend/app/ai/prompts/`, `backend/app/risk/keywords.txt`, `supabase/seed.sql` | everything else |
+| Lead + backend + all screens | Dhia | everything | — |
+| A — Patient app testing | teammate A | `frontend/src/pages/patient/` for small fixes only, with Dhia's OK | everything else |
+| B — Content | teammate B | `docs/`, `backend/app/ai/prompts/`, `backend/app/risk/keywords.txt`, `supabase/seed.sql` | everything else |
+
+All 15 screens are built by Dhia from the Claude Design file (https://claude.ai/artifact/5jNb1t3kYf15GJuWdwRQFy).
+The look lives in `frontend/src/components/t4h/` (kit.tsx, spec.tsx) and `frontend/src/index.css`: reuse those pieces, never restyle a screen by hand.
 
 For A and B these files are **read-only, always**: `frontend/src/types/contract.ts`,
 `frontend/src/api/`, `frontend/src/mocks/`, `backend/` (except B's two content paths),
@@ -45,8 +48,8 @@ unless the user is Dhia.
   - `useAsync` from `@/hooks/useAsync` for loading data: `const { data, error, loading, reload } = useAsync(() => getHomework(), [])`
   - `Spinner`, `ErrorView`, `EmptyView` from `@/components/StateViews` for the loading / error / empty states.
   - `useAuth()` from `@/auth/AuthContext` for the logged-in user (`me`) and `refresh()`.
-- Every page file starts as a placeholder that lists what to build and which functions to call. Replace the whole file.
-- Routes already exist in `App.tsx` for every planned screen. A new route needs Dhia.
+- Every screen is already built from the design. Fix bugs in place, keep the same components and colors.
+- Routes already exist in `App.tsx` for every screen. A new route needs Dhia.
 - Run `npm run dev` inside `frontend/` and check the screen in the browser before saying it's done.
 
 ## Rules for content work (B)

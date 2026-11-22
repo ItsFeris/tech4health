@@ -1,247 +1,270 @@
-import { useEffect, useRef, useState } from 'react'
+// Patient home: chat with Nour (design: 3 · Chat, plus loading, offline/error and Arabic RTL states).
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mic, Paperclip, Send, Sparkles } from 'lucide-react'
-import { getAppointments, getChatHistory, sendChat } from '@/api'
-import type { Appointment, Message } from '@/types/contract'
+import { AlertCircle, ArrowRight, CalendarDays, WifiOff, X } from 'lucide-react'
+import { getAppointments, getChatHistory, getHomework, sendChat } from '@/api'
+import { useAuth } from '@/auth/AuthContext'
+import type { Appointment, Homework, Lang, Message } from '@/types/contract'
+import { Headline, Hero, LogoOrb, Notice, Pill, Skeleton, SmallButton, TopBar, TypingDots } from '@/components/t4h/kit'
+import { dayLabel, greeting, partOfDay, timeLabel } from '@/lib/format'
 import { cn } from '@/lib/utils'
+
+const WELCOME: Record<Lang, string> = {
+  darija: 'Ahla! Ena Nour. Ena hna bech nesma3ek ay wa9t. Kifech t7es lyoum?',
+  ar: 'أهلاً! أنا نور. أنا هنا لأسمعك في أي وقت. كيف تشعر اليوم؟',
+  fr: "Bonjour ! Moi c'est Nour. Je suis là pour t'écouter, à tout moment. Comment tu te sens aujourd'hui ?",
+  en: "Hi! I'm Nour. I'm here to listen, any time. How are you feeling today?",
+}
+
+const QUICK: Record<Lang, { breathe: string; talk: string }> = {
+  darija: { breathe: 'Netneffsou m3a b3adhna?', talk: 'N7eb nehki barka' },
+  ar: { breathe: 'هل نتنفس معاً؟', talk: 'أريد أن أتحدث فقط' },
+  fr: { breathe: 'On respire ensemble ?', talk: 'Je veux juste parler' },
+  en: { breathe: 'Can we breathe together?', talk: 'I just want to talk' },
+}
+
+interface Pending {
+  id: string
+  content: string
+  failed: boolean
+}
 
 export default function ChatPage() {
   const navigate = useNavigate()
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { me } = useAuth()
+  const lang: Lang = me?.language ?? 'en'
+  const rtl = lang === 'ar'
+  const bottomRef = useRef<HTMLDivElement>(null)
 
   const [messages, setMessages] = useState<Message[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [input, setInput] = useState('')
+  const [homework, setHomework] = useState<Homework[]>([])
   const [loading, setLoading] = useState(true)
-  const [sending, setSending] = useState(false)
-  const [urgentBanner, setUrgentBanner] = useState<string | null>(null)
-  const [sendError, setSendError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState(false)
+  const [pending, setPending] = useState<Pending | null>(null)
+  const [input, setInput] = useState('')
+  const [urgent, setUrgent] = useState<Appointment | null>(null)
 
-  useEffect(() => {
-    async function init() {
-      try {
-        setLoading(true)
-        const [history, appts] = await Promise.all([
-          getChatHistory(),
-          getAppointments().catch(() => []),
-        ])
-        setMessages(history)
-        setAppointments(appts)
-      } catch {
-        // Ignore
-      } finally {
-        setLoading(false)
-      }
-    }
-    void init()
-  }, [])
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, sending])
-
-  async function handleSend(e?: React.FormEvent) {
-    if (e) e.preventDefault()
-    if (!input.trim() || sending) return
-
-    const userText = input.trim()
-    setInput('')
-    setSendError(null)
-    setSending(true)
-
+  async function load() {
+    setLoading(true)
+    setLoadError(false)
     try {
-      const reply = await sendChat(userText)
-      setMessages((prev) => [...prev, reply.user_message, reply.ai_message])
-
-      if (reply.crisis) {
-        navigate('/patient/crisis', { state: { crisis: reply.crisis } })
-        return
-      }
-
-      if (reply.urgent_appointment) {
-        const dateStr = new Date(reply.urgent_appointment.starts_at).toLocaleDateString('fr-FR', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-        setUrgentBanner(`Votre spécialiste a été notifié et vous recevra en priorité le ${dateStr}.`)
-      }
+      const [history, appts, hw] = await Promise.all([getChatHistory(), getAppointments().catch(() => []), getHomework().catch(() => [])])
+      setMessages(history)
+      setAppointments(appts)
+      setHomework(hw)
     } catch {
-      // Never lose what the patient wrote: put it back and say so.
-      setInput(userText)
-      setSendError("Votre message n'a pas pu être envoyé. Vérifiez votre connexion et réessayez. En cas d'urgence, utilisez le bouton SOS.")
+      setLoadError(true)
     } finally {
-      setSending(false)
+      setLoading(false)
     }
   }
 
-  const nextAppointment = appointments.find((a) => a.status === 'scheduled')
+  useEffect(() => {
+    void load()
+  }, [])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [messages, pending])
+
+  async function send(text: string) {
+    const content = text.trim()
+    if (!content || (pending && !pending.failed)) return
+    setInput('')
+    setPending({ id: crypto.randomUUID(), content, failed: false })
+    try {
+      const reply = await sendChat(content)
+      setPending(null)
+      setMessages((prev) => [...prev, reply.user_message, reply.ai_message])
+      if (reply.urgent_appointment) {
+        setUrgent(reply.urgent_appointment)
+        setAppointments((prev) => [...prev.filter((a) => a.id !== reply.urgent_appointment!.id), reply.urgent_appointment!])
+      }
+      if (reply.crisis) navigate('/patient/crisis', { state: { crisis: reply.crisis } })
+    } catch {
+      // Never lose what the patient wrote: keep it on screen, marked "Not sent".
+      setPending({ id: crypto.randomUUID(), content, failed: true })
+    }
+  }
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    void send(input)
+  }
+
+  const now = new Date().toISOString()
+  const next = appointments.filter((a) => a.status === 'scheduled' && a.starts_at >= now).sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0]
+  const todo = homework.filter((h) => !h.done).length
+  const offline = loadError || Boolean(pending?.failed)
+  const sending = Boolean(pending && !pending.failed)
+  const lastIsAi = messages.length === 0 || messages[messages.length - 1].sender === 'ai'
 
   return (
-    <div className="mx-auto min-h-svh max-w-md bg-[#F7F5F0] text-[#222126] font-sans pb-32 selection:bg-amber-100 flex flex-col justify-between">
-      <div className="flex flex-col gap-4 p-5">
-        
-        {/* Top AI Conversational Greeting */}
-        <div className="text-center pt-2 pb-1">
-          <div className="mx-auto mb-2 flex size-7 items-center justify-center text-[#7F9E75]">
-            <Sparkles className="size-5" />
-          </div>
-          <h1 className="font-serif text-[22px] font-normal tracking-tight text-[#222126] leading-snug">
-            Bonjour, je suis votre compagnon. <br /> De quoi aimeriez-vous parler ?
-          </h1>
-          <p className="text-[#86838F] text-[11px] mt-1">
-            Espace d'écoute bienveillant, anonyme et sécurisé 24h/24.
-          </p>
-        </div>
+    <div className="relative min-h-svh overflow-hidden">
+      <Hero tone="teal" height={380} />
+      <div className="relative z-10 flex flex-col gap-4 px-5 pt-6">
+        <TopBar
+          center={
+            <Pill>
+              <span className={cn('size-2 rounded-full', offline ? 'bg-warn' : 'bg-ok')} />
+              {offline ? 'Offline' : 'Nour · here 24/7'}
+            </Pill>
+          }
+        />
+        <Headline eyebrow={`${greeting()}, ${me?.nickname ?? ''}`} title={`How are you ${partOfDay()}?`} className="mt-3" />
 
-        {/* Doctor / Specialist Card (from mockup) */}
-        {nextAppointment && (
-          <div className="rounded-[2rem] bg-white p-4 shadow-xs border border-black/[0.04] flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="size-11 rounded-full overflow-hidden bg-amber-100 border border-black/10">
-                <img
-                  src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=120&auto=format&fit=crop&q=80"
-                  alt="Doctor"
-                  className="size-full object-cover"
-                />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-[#1F1E24]">Dr. Marjorie Black</p>
-                <p className="text-[10px] text-[#86838F]">
-                  Prochaine séance : {new Date(nextAppointment.starts_at).toLocaleDateString('fr-FR', {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+        {urgent && (
+          <div className="flex items-center gap-3 rounded-[22px] bg-white px-3 py-2.5 shadow-[var(--shadow-float)]">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-lav text-lav-deep">
+              <CalendarDays className="size-[18px]" />
+            </span>
+            <p className="flex-1 text-[14px] leading-snug">
+              Your specialist found an earlier slot to see you: <strong className="font-semibold">{dayLabel(urgent.starts_at)} at {timeLabel(urgent.starts_at)}</strong>.
+            </p>
+            <button type="button" aria-label="Dismiss" onClick={() => setUrgent(null)} className="flex size-8 shrink-0 items-center justify-center rounded-full bg-soft">
+              <X className="size-4" />
+            </button>
+          </div>
+        )}
+
+        {offline && (
+          <Notice
+            icon={
+              <span className="flex size-8 items-center justify-center rounded-full bg-white">
+                <WifiOff className="size-4" />
+              </span>
+            }
+            action={
+              <SmallButton onClick={() => (pending?.failed ? void send(pending.content) : void load())} className="border-0">
+                Retry
+              </SmallButton>
+            }
+          >
+            <strong className="font-semibold">You&apos;re offline.</strong> Messages will send when you&apos;re back. SOS still calls 190.
+          </Notice>
+        )}
+
+        {(next || homework.length > 0) && (
+          <div className="no-scrollbar -mx-5 flex gap-3 overflow-x-auto px-5 pb-1">
+            {next && (
+              <div className="relative min-w-[236px] overflow-hidden rounded-[26px] p-4 shadow-[var(--shadow-soft)]" style={{ background: 'linear-gradient(140deg, #CBECF5 0%, #D9F0EA 100%)' }}>
+                <span aria-hidden="true" className="absolute -right-3 top-3 size-14 rotate-45 rounded-2xl border border-white/80 bg-white/30" />
+                <p className="text-[20px] leading-tight tracking-[-0.4px]">Next session</p>
+                <p className="text-[20px] leading-tight tracking-[-0.4px] text-teal-ink">{dayLabel(next.starts_at)}</p>
+                <p className="mt-3 flex items-baseline gap-2 border-l-2 border-white/80 pl-2.5">
+                  <span className="text-[38px] leading-none tracking-[-1.5px]">{timeLabel(next.starts_at)}</span>
+                  <span className="text-[12.5px] text-teal-deep">{next.type === 'urgent' ? 'earlier slot' : 'weekly session'}</span>
                 </p>
               </div>
-            </div>
-            <span className="rounded-full bg-[#EAF3E7] px-2.5 py-1 text-[10px] font-bold text-[#437536]">
-              Confirmé
-            </span>
-          </div>
-        )}
-
-        {/* Urgent Appointment Notification */}
-        {urgentBanner && (
-          <div className="rounded-2xl border border-amber-200 bg-[#FFF7ED] p-3.5 text-xs text-amber-900 shadow-xs">
-            {urgentBanner}
-          </div>
-        )}
-
-        {sendError && (
-          <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-800 shadow-xs">
-            {sendError}
-          </div>
-        )}
-
-        {/* Chat Messages Stream */}
-        {loading ? (
-          <div className="flex h-36 items-center justify-center text-xs text-[#86838F]">
-            Chargement de la discussion...
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3 pt-2">
-            {messages.map((msg) => {
-              const isUser = msg.sender === 'user'
-              return (
-                <div
-                  key={msg.id}
-                  className={cn('flex flex-col max-w-[82%]', isUser ? 'self-end items-end' : 'self-start items-start')}
-                >
-                  <div
-                    className={cn(
-                      'rounded-[1.8rem] px-4 py-3 text-xs leading-relaxed shadow-xs',
-                      isUser
-                        ? 'bg-[#8A583C] text-white rounded-br-xs'
-                        : 'bg-white text-[#222126] border border-black/[0.04] rounded-bl-xs'
-                    )}
-                  >
-                    {msg.content}
-                  </div>
-                  <span className="text-[9px] text-[#A2A0AB] mt-1 px-1">
-                    {new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-              )
-            })}
-
-            {/* Typing Indicator */}
-            {sending && (
-              <div className="self-start rounded-[1.8rem] rounded-bl-xs bg-white border border-black/[0.04] px-4 py-3 shadow-xs">
-                <div className="flex items-center gap-1">
-                  <div className="size-1.5 animate-bounce rounded-full bg-[#8A583C]" style={{ animationDelay: '0ms' }} />
-                  <div className="size-1.5 animate-bounce rounded-full bg-[#8A583C]" style={{ animationDelay: '150ms' }} />
-                  <div className="size-1.5 animate-bounce rounded-full bg-[#8A583C]" style={{ animationDelay: '300ms' }} />
-                </div>
-              </div>
             )}
-            <div ref={messagesEndRef} />
+            {homework.length > 0 && (
+              <button
+                type="button"
+                onClick={() => navigate('/patient/homework')}
+                className="min-w-[150px] rounded-[26px] p-4 text-left shadow-[var(--shadow-soft)]"
+                style={{ background: 'linear-gradient(140deg, #DDD8FF 0%, #ECE4F8 100%)' }}
+              >
+                <p className="text-[20px] leading-tight tracking-[-0.4px]">Homework</p>
+                <p className="text-[20px] leading-tight tracking-[-0.4px] text-lav-ink">{todo} to do</p>
+                <p className="mt-3 text-[34px] leading-none tracking-[-1.2px]">
+                  {homework.length - todo}/{homework.length}
+                </p>
+              </button>
+            )}
           </div>
         )}
 
-        {/* Quick Suggestion Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pt-2 pb-1 text-xs">
-          <button
-            type="button"
-            onClick={() => setInput("J'ai besoin de conseils pour calmer mon anxiété...")}
-            className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-[#65636B] border border-black/[0.04] hover:border-[#8A583C]"
-          >
-            🌿 Calmer mon anxiété
-          </button>
-          <button
-            type="button"
-            onClick={() => setInput("Comment s'est passée ma semaine selon mes notes ?")}
-            className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-[#65636B] border border-black/[0.04] hover:border-[#8A583C]"
-          >
-            📊 Bilan de ma semaine
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/patient/homework')}
-            className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-[#65636B] border border-black/[0.04] hover:border-[#8A583C]"
-          >
-            ✨ Voir mes exercices
-          </button>
-        </div>
+        <section aria-label="Conversation" aria-live="polite" dir={rtl ? 'rtl' : undefined} lang={rtl ? 'ar' : undefined} className="flex flex-col gap-2.5">
+          {loading ? (
+            <>
+              <Skeleton className="h-12 w-3/4 rounded-[22px]" />
+              <Skeleton className="ms-auto h-16 w-2/3 rounded-[22px]" />
+              <Skeleton className="h-20 w-4/5 rounded-[22px]" />
+            </>
+          ) : (
+            <>
+              {messages.length === 0 && <Bubble sender="ai" text={WELCOME[lang]} />}
+              {messages.map((m) => (
+                <Bubble key={m.id} sender={m.sender} text={m.content} />
+              ))}
+              {pending && (
+                <div className="flex flex-col items-end gap-1.5">
+                  <Bubble sender="user" text={pending.content} muted={pending.failed} />
+                  {pending.failed && (
+                    <div className="flex items-center gap-2 text-[13px]">
+                      <span className="flex items-center gap-1 text-sos">
+                        <AlertCircle className="size-3.5" /> Not sent
+                      </span>
+                      <SmallButton onClick={() => void send(pending.content)}>Tap to retry</SmallButton>
+                    </div>
+                  )}
+                </div>
+              )}
+              {sending && (
+                <div className="flex items-center gap-2.5">
+                  <span className="rounded-[18px] bg-white px-4 py-3 shadow-[var(--shadow-soft)]">
+                    <TypingDots />
+                  </span>
+                  <span className="text-[12.5px] text-sub">Nour is typing…</span>
+                </div>
+              )}
+              {!pending && lastIsAi && (
+                <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pt-1">
+                  <Chip onClick={() => void send(QUICK[lang].breathe)}>Breathe together</Chip>
+                  <Chip onClick={() => void send(QUICK[lang].talk)}>Just talk</Chip>
+                  <Chip onClick={() => navigate('/patient/checkin')}>Log my mood</Chip>
+                </div>
+              )}
+            </>
+          )}
+          <div ref={bottomRef} aria-hidden="true" className="h-40 shrink-0" />
+        </section>
       </div>
 
-      {/* Floating Bottom Input Bar (Identical to reference mockup) */}
-      <div className="fixed inset-x-0 bottom-16 mx-auto max-w-md px-4 z-30">
-        <form
-          onSubmit={(e) => void handleSend(e)}
-          className="flex items-center gap-2 rounded-full bg-white/95 backdrop-blur-md px-3.5 py-2.5 shadow-lg shadow-black/10 border border-black/[0.06]"
-        >
-          <button type="button" aria-label="Microphone" className="text-[#8B8896] hover:text-[#1F1E24]">
-            <Mic className="size-4" />
-          </button>
-          
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Écrivez un message à votre compagnon..."
-            className="flex-1 text-xs text-[#1F1E24] bg-transparent border-none p-0 focus:outline-none focus:ring-0 placeholder:text-[#A4A2AC]"
-          />
-
-          <button type="button" aria-label="Attach" className="text-[#8B8896] hover:text-[#1F1E24]">
-            <Paperclip className="size-4" />
-          </button>
-
-          <button
-            type="submit"
-            disabled={!input.trim() || sending}
-            aria-label="Send"
-            className="flex size-7 items-center justify-center rounded-full bg-[#8A583C] text-white hover:bg-[#774B32] transition-colors disabled:opacity-50"
-          >
-            <Send className="size-3.5 ml-0.5" />
-          </button>
-        </form>
-      </div>
+      <form onSubmit={onSubmit} className="fixed inset-x-0 bottom-[88px] z-20 mx-auto flex max-w-[430px] items-center gap-2.5 bg-[linear-gradient(180deg,rgba(248,248,250,0)_0%,#F8F8FA_38%)] px-4 pb-3 pt-6">
+        <label htmlFor="chat-input" className="sr-only">
+          Message to Nour
+        </label>
+        <input
+          id="chat-input"
+          dir="auto"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Write to Nour…"
+          maxLength={2000}
+          className="h-[52px] min-w-0 flex-1 rounded-full border-0 bg-white px-5 text-[15px] shadow-[var(--shadow-float)] outline-none placeholder:text-faint focus:ring-2 focus:ring-ink/15"
+        />
+        <button type="submit" aria-label="Send" disabled={!input.trim() || sending} className="flex size-[52px] shrink-0 items-center justify-center rounded-full bg-ink text-white transition disabled:opacity-50">
+          <ArrowRight className={cn('size-5', rtl && 'rotate-180')} />
+        </button>
+      </form>
     </div>
+  )
+}
+
+function Bubble({ sender, text, muted }: { sender: 'user' | 'ai'; text: string; muted?: boolean }) {
+  const ai = sender === 'ai'
+  return (
+    <div className={cn('flex items-end gap-2', ai ? 'justify-start' : 'justify-end')}>
+      {ai && <LogoOrb size={28} className="mb-0.5 shadow-none" />}
+      <p
+        dir="auto"
+        className={cn(
+          'max-w-[78%] whitespace-pre-wrap rounded-[22px] px-4 py-3 text-[15.5px] leading-[1.4]',
+          ai ? 'rounded-bl-md bg-white text-ink shadow-[var(--shadow-soft)]' : muted ? 'rounded-br-md bg-[#77767E] text-white' : 'rounded-br-md bg-ink text-white',
+        )}
+      >
+        {text}
+      </p>
+    </div>
+  )
+}
+
+function Chip({ onClick, children }: { onClick: () => void; children: string }) {
+  return (
+    <button type="button" onClick={onClick} className="h-[38px] shrink-0 rounded-full border border-line bg-white px-4 text-[14px] text-ink transition hover:bg-soft">
+      {children}
+    </button>
   )
 }

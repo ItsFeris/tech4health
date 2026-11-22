@@ -7,8 +7,10 @@ Welcome to the Tech4Health team. Read this once (5 minutes), then let your AI as
 | You are | You build |
 | --- | --- |
 | **Dhia** | Backend, database, risk engine, the app skeleton, merging everyone's work |
-| **A** | The patient app: login, chat, daily check-in, homework list, PHQ-9 form, SOS button, crisis screen |
-| **B** | The specialist dashboard (patient list, alerts, weekly summary, assign homework, mood chart) + content (AI prompts, crisis keywords, demo patients, demo script, slides) |
+| **A** | Tests the patient app on real phones, reports bugs, small fixes with Dhia's OK, rehearses the patient side of the demo |
+| **B** | Content: AI prompts, crisis keywords, crisis screen text, demo patients, demo script, slides |
+
+All screens are already built from the design file. You don't need to build screens.
 
 The full plan is in [`docs/CONTRACT.md`](docs/CONTRACT.md). Your AI reads it for you.
 

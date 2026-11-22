@@ -1,158 +1,109 @@
+// Crisis screen (design: 8 · Crisis screen). Full screen, calm, three big actions.
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Heart, Phone, ShieldAlert, Sparkles, Wind } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ArrowLeft, Check, Heart, Phone, Wind } from 'lucide-react'
 import { sendSos } from '@/api'
 import type { Crisis } from '@/types/contract'
-import { crisis as defaultCrisis } from '@/mocks/crisis'
+import { crisis as fallbackCrisis } from '@/mocks/crisis'
+import { GlassCircle, Notice } from '@/components/t4h/kit'
 import { cn } from '@/lib/utils'
+
+const EMERGENCY_NUMBER = '190' // SAMU Tunisia
+const PHASES = [
+  { label: 'Breathe in', secs: 4, scale: 'scale-110' },
+  { label: 'Hold', secs: 4, scale: 'scale-110' },
+  { label: 'Breathe out', secs: 6, scale: 'scale-[0.82]' },
+] as const
 
 export default function CrisisPage() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const state = location.state as { crisis?: Crisis; directBreathing?: boolean } | null
+  const state = useLocation().state as { crisis?: Crisis; alerted?: boolean } | null
+  const crisis = state?.crisis ?? fallbackCrisis
+  const [alerted, setAlerted] = useState(state?.alerted ?? Boolean(state?.crisis))
+  const [sending, setSending] = useState(false)
+  const [sosError, setSosError] = useState(false)
+  const [breathing, setBreathing] = useState(false)
+  const [phase, setPhase] = useState(0)
 
-  const crisisData = state?.crisis ?? defaultCrisis
-  const [breathingActive, setBreathingActive] = useState(Boolean(state?.directBreathing))
-  const [breathPhase, setBreathPhase] = useState<'inspire' | 'bloque' | 'expire'>('inspire')
-  const [countdown, setCountdown] = useState(4)
-  const [sosSending, setSosSending] = useState(false)
-  const [sosSent, setSosSent] = useState(false)
-
-  // Breathing Box Timer: 4s Inspire -> 4s Hold -> 4s Expire
   useEffect(() => {
-    if (!breathingActive) return
+    if (!breathing) return
+    const t = setTimeout(() => setPhase((p) => (p + 1) % PHASES.length), PHASES[phase].secs * 1000)
+    return () => clearTimeout(t)
+  }, [breathing, phase])
 
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev > 1) return prev - 1
-        // Change phase
-        setBreathPhase((current) => {
-          if (current === 'inspire') return 'bloque'
-          if (current === 'bloque') return 'expire'
-          return 'inspire'
-        })
-        return 4
-      })
-    }, 1000)
+  const label = (kind: 'call' | 'sos' | 'breathing', fallback: string) => crisis.actions.find((a) => a.kind === kind)?.label ?? fallback
 
-    return () => clearInterval(timer)
-  }, [breathingActive])
-
-  async function handleActionClick(action: Crisis['actions'][number]) {
-    if (action.kind === 'breathing') {
-      setBreathingActive(true)
-    } else if (action.kind === 'call') {
-      window.location.href = 'tel:190'
-    } else if (action.kind === 'sos') {
-      setSosSending(true)
-      try {
-        await sendSos()
-        setSosSent(true)
-      } finally {
-        setSosSending(false)
-      }
+  async function alertAgain() {
+    setSending(true)
+    setSosError(false)
+    try {
+      await sendSos()
+      setAlerted(true)
+    } catch {
+      setSosError(true)
+    } finally {
+      setSending(false)
     }
   }
 
   return (
-    <div className="flex min-h-svh flex-col justify-between bg-gradient-to-b from-rose-50/50 via-background to-background p-6">
-      {/* Top Warning Badge */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-rose-600 font-semibold text-xs">
-          <ShieldAlert className="size-5" />
-          <span>Espace de soutien d'urgence</span>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="rounded-xl text-muted-foreground"
-          onClick={() => navigate('/patient')}
-        >
-          <ArrowLeft className="mr-1 size-4" /> Quitter
-        </Button>
-      </div>
+    <div className="relative mx-auto flex min-h-svh max-w-[430px] flex-col overflow-hidden" style={{ background: 'linear-gradient(180deg, #BFE3EA 0%, #DCEEF2 38%, #E6E1F7 78%, #F3E3EE 100%)' }}>
+      <div aria-hidden="true" className="absolute -left-24 -top-20 size-[280px] rounded-full border border-white/60 bg-white/20" />
+      <div aria-hidden="true" className="absolute -bottom-10 -right-24 size-[300px] rounded-[100%_0_100%_0] border border-white/60 bg-white/20" />
 
-      {/* Main Content or Breathing Box */}
-      {breathingActive ? (
-        <div className="flex flex-col items-center justify-center text-center my-auto py-8">
-          <span className="text-xs font-semibold text-primary uppercase tracking-wider">
-            Respiration apaisante (4-4-4)
+      <div className="relative z-10 flex flex-1 flex-col px-5 pb-7 pt-6">
+        <div className="flex items-center justify-between">
+          <GlassCircle aria-label="Back to Nour" onClick={() => navigate('/patient')}>
+            <ArrowLeft className="size-5" />
+          </GlassCircle>
+          <span className={cn('flex h-[38px] items-center gap-2 rounded-full bg-white px-4 text-[14px] shadow-[var(--shadow-float)] transition', !alerted && 'opacity-0')} aria-live="polite">
+            <span className="flex size-5 items-center justify-center rounded-full bg-ok text-white">
+              <Check className="size-3" />
+            </span>
+            Specialist alerted
           </span>
-
-          {/* Animated Circle */}
-          <div className="relative my-8 flex size-52 items-center justify-center">
-            <div
-              className={cn(
-                'absolute size-full rounded-full bg-primary/10 transition-transform duration-1000 ease-in-out',
-                breathPhase === 'inspire' ? 'scale-110 bg-primary/20' : breathPhase === 'bloque' ? 'scale-110' : 'scale-90 bg-primary/5'
-              )}
-            />
-            <div className="flex flex-col items-center justify-center">
-              <Wind className="mb-2 size-8 text-primary animate-pulse" />
-              <span className="font-serif text-2xl font-bold text-foreground capitalize">
-                {breathPhase === 'inspire' ? 'Inspirez...' : breathPhase === 'bloque' ? 'Retenez...' : 'Expirez...'}
-              </span>
-              <span className="font-mono text-3xl font-extrabold text-primary mt-1">{countdown}s</span>
-            </div>
-          </div>
-
-          <p className="text-muted-foreground text-xs max-w-xs leading-relaxed">
-            Concentrez-vous sur l'air qui entre et sort de vos poumons. Votre corps retrouve son rythme naturel.
-          </p>
-
-          <Button
-            variant="outline"
-            className="mt-6 rounded-2xl"
-            onClick={() => setBreathingActive(false)}
-          >
-            Revenir aux options d'assistance
-          </Button>
+          <span className="w-[52px]" />
         </div>
-      ) : (
-        <div className="flex flex-col my-auto py-4">
-          <div className="mb-3 flex size-14 items-center justify-center rounded-3xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
-            <Heart className="size-7 fill-rose-600 dark:fill-rose-400" />
-          </div>
 
-          <h1 className="font-serif text-3xl font-bold text-foreground tracking-tight">
-            {crisisData.title}
-          </h1>
-
-          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-            {crisisData.body}
-          </p>
-
-          {sosSent && (
-            <div className="mt-4 rounded-2xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800">
-              Votre spécialiste a bien reçu le rappel d'alerte.
-            </div>
+        <button
+          type="button"
+          onClick={() => setBreathing((b) => !b)}
+          aria-label={breathing ? 'Stop breathing exercise' : 'Start breathing exercise'}
+          className={cn(
+            'mx-auto mt-14 flex size-[132px] items-center justify-center rounded-full bg-white px-5 text-center text-[16px] leading-tight shadow-[0_20px_50px_rgba(40,30,70,.12)] transition-transform ease-in-out',
+            breathing ? PHASES[phase].scale : 'scale-100',
           )}
+          style={{ transitionDuration: breathing ? `${PHASES[phase].secs}s` : '300ms' }}
+        >
+          {breathing ? PHASES[phase].label : 'Breathe with me'}
+        </button>
 
-          {/* Action Buttons from Contract */}
-          <div className="mt-8 flex flex-col gap-3">
-            {crisisData.actions.map((act) => (
-              <Button
-                key={act.label}
-                size="lg"
-                variant={act.kind === 'call' ? 'destructive' : act.kind === 'sos' ? 'default' : 'secondary'}
-                disabled={sosSending && act.kind === 'sos'}
-                onClick={() => void handleActionClick(act)}
-                className="h-14 rounded-2xl text-base shadow-sm justify-start px-5"
-              >
-                {act.kind === 'call' && <Phone className="mr-3 size-5" />}
-                {act.kind === 'sos' && <ShieldAlert className="mr-3 size-5" />}
-                {act.kind === 'breathing' && <Sparkles className="mr-3 size-5 text-primary" />}
-                <span>{act.label}</span>
-              </Button>
-            ))}
-          </div>
+        <h1 dir="auto" className="headline mt-14 text-center text-[42px]">
+          {crisis.title}
+        </h1>
+        <p dir="auto" className="mt-3 text-center text-[16px] leading-relaxed text-ink-2">
+          {crisis.body}
+        </p>
+
+        <div className="mt-auto flex flex-col gap-3 pt-8">
+          {sosError && (
+            <Notice tone="error">
+              The alert could not be sent. Call <strong>{EMERGENCY_NUMBER}</strong> now, or try again.
+            </Notice>
+          )}
+          <a href={`tel:${EMERGENCY_NUMBER}`} className="flex h-[60px] items-center justify-between rounded-full bg-ink pl-6 pr-2 text-[17px] text-white">
+            <span className="flex items-center gap-3">
+              <Phone className="size-5" /> <span dir="auto">{label('call', 'Call emergency services')}</span>
+            </span>
+            <span className="flex size-12 items-center justify-center rounded-full bg-white text-[15px] font-semibold text-ink">{EMERGENCY_NUMBER}</span>
+          </a>
+          <button type="button" disabled={sending} onClick={() => void alertAgain()} className="flex h-[60px] items-center justify-center gap-2 rounded-full bg-white text-[17px] shadow-[var(--shadow-float)] disabled:opacity-60">
+            <Heart className="size-4 text-sos" fill="currentColor" /> <span dir="auto">{sending ? 'Sending…' : label('sos', 'Alert my specialist again')}</span>
+          </button>
+          <button type="button" onClick={() => setBreathing((b) => !b)} className="flex h-[60px] items-center justify-center gap-2 rounded-full border border-white/80 bg-white/40 text-[17px]">
+            <Wind className="size-5" /> <span dir="auto">{breathing ? 'Stop breathing' : label('breathing', 'Breathe with me')}</span>
+          </button>
         </div>
-      )}
-
-      {/* Safety Footer */}
-      <div className="rounded-2xl bg-muted/40 p-3 text-center text-[11px] text-muted-foreground">
-        En cas de danger vital immédiat, composez directement le <strong>190</strong> (Samu Tunisie) ou le <strong>15</strong> (France).
       </div>
     </div>
   )
